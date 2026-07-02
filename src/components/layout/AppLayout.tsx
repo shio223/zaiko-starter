@@ -10,8 +10,8 @@ type AppLayoutProps = {
 
 export function AppLayout({ children, showBackToMenu = true }: AppLayoutProps) {
   return (
-    <div className="min-h-screen p-4">
-      <div className="mx-auto max-w-[1400px]">
+    <div className="app-layout">
+      <div className="app-layout-inner">
         {showBackToMenu && (
           <div className="mb-2">
             <Link href="/">

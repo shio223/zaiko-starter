@@ -11,6 +11,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SearchFilterPanel } from "@/components/inventory/SearchFilterPanel";
 import { MasterTable } from "@/components/master/MasterTable";
+import { MasterTabNav, type MasterTab } from "@/components/master/MasterTabNav";
 import { AccessButton } from "@/components/ui/AccessButton";
 import {
   deleteProduct,
@@ -31,6 +32,7 @@ const defaultFilter: SearchFilter = {
 
 export default function MasterPage() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<MasterTab>("product");
   const [products, setProducts] = useState<Product[]>([]);
   const [filter, setFilter] = useState<SearchFilter>(defaultFilter);
   const [selected, setSelected] = useState<Product | null>(null);
@@ -100,65 +102,87 @@ export default function MasterPage() {
 
   return (
     <AppLayout>
-      <PageHeader title="マスタ保守 - 製品マスタ">
-        <Link href="/master/new">
-          <AccessButton variant="green">新規登録</AccessButton>
-        </Link>
-        <AccessButton
-          variant="blue"
-          onClick={handleEdit}
-          disabled={!selected}
-        >
-          編集
-        </AccessButton>
-        <AccessButton
-          variant="red"
-          onClick={handleDelete}
-          disabled={!selected || deleting}
-        >
-          {deleting ? "削除中..." : "削除"}
-        </AccessButton>
-        <AccessButton variant="orange" onClick={loadProducts} disabled={loading}>
-          更新
-        </AccessButton>
+      <PageHeader title="マスタ保守">
+        {activeTab === "product" && (
+          <>
+            <Link href="/master/new">
+              <AccessButton variant="green">新規登録</AccessButton>
+            </Link>
+            <AccessButton
+              variant="blue"
+              onClick={handleEdit}
+              disabled={!selected}
+            >
+              編集
+            </AccessButton>
+            <AccessButton
+              variant="red"
+              onClick={handleDelete}
+              disabled={!selected || deleting}
+            >
+              {deleting ? "削除中..." : "削除"}
+            </AccessButton>
+            <AccessButton variant="orange" onClick={loadProducts} disabled={loading}>
+              更新
+            </AccessButton>
+          </>
+        )}
       </PageHeader>
 
-      {error && (
-        <div className="access-panel mb-3 border-2 border-red-600 p-3 text-sm text-red-700">
-          {error}
+      <MasterTabNav active={activeTab} onChange={setActiveTab} />
+
+      {activeTab === "shelf" && (
+        <div className="access-panel p-6 text-center text-sm">
+          棚番マスタは今後実装予定です。
         </div>
       )}
 
-      <div className="flex flex-col gap-3 lg:flex-row">
-        <SearchFilterPanel
-          filter={filter}
-          onChange={setFilter}
-          onClear={() => setFilter(defaultFilter)}
-        />
-
-        <div className="flex flex-1 flex-col gap-2">
-          <div className="text-sm">
-            表示件数: {filteredProducts.length} / {products.length} 件
-            {selected && (
-              <span className="ml-4">
-                選択中: {selected.part_number} - {selected.product_name}
-              </span>
-            )}
-          </div>
-
-          {loading ? (
-            <div className="access-panel p-4 text-center text-sm">
-              読み込み中...
-            </div>
-          ) : (
-            <MasterTable
-              products={filteredProducts}
-              selectedId={selected?.id ?? null}
-              onSelect={setSelected}
-            />
-          )}
+      {activeTab === "person" && (
+        <div className="access-panel p-6 text-center text-sm">
+          担当者マスタは今後実装予定です。
         </div>
-      </div>
+      )}
+
+      {activeTab === "product" && (
+        <>
+          {error && (
+            <div className="access-panel mb-3 border-2 border-red-600 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          <div className="content-layout">
+            <SearchFilterPanel
+              filter={filter}
+              onChange={setFilter}
+              onClear={() => setFilter(defaultFilter)}
+            />
+
+            <div className="content-main">
+              <div className="text-sm content-summary">
+                表示件数: {filteredProducts.length} / {products.length} 件
+                {selected && (
+                  <span className="content-summary-selected">
+                    選択中: {selected.part_number} - {selected.product_name}
+                  </span>
+                )}
+              </div>
+
+              {loading ? (
+                <div className="access-panel p-4 text-center text-sm">
+                  読み込み中...
+                </div>
+              ) : (
+                <MasterTable
+                  products={filteredProducts}
+                  selectedId={selected?.id ?? null}
+                  onSelect={setSelected}
+                />
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </AppLayout>
   );
 }

@@ -1,4 +1,4 @@
-/** 各画面のタイトルバー */
+/** 各画面のタイトルバー（レスポンシブ対応） */
 import type { ReactNode } from "react";
 
 type PageHeaderProps = {
@@ -8,9 +8,9 @@ type PageHeaderProps = {
 
 export function PageHeader({ title, children }: PageHeaderProps) {
   return (
-    <div className="mb-3 flex items-center justify-between border-b-2 border-[#808080] pb-2">
-      <h1 className="text-lg font-bold">{title}</h1>
-      {children && <div className="flex gap-2">{children}</div>}
+    <div className="page-header">
+      <h1 className="page-header-title">{title}</h1>
+      {children && <div className="page-header-actions">{children}</div>}
     </div>
   );
 }

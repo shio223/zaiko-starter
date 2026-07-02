@@ -78,15 +78,15 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 lg:flex-row">
+      <div className="content-layout">
         <SearchFilterPanel
           filter={filter}
           onChange={setFilter}
           onClear={() => setFilter(defaultFilter)}
         />
 
-        <div className="flex flex-1 flex-col gap-2">
-          <div className="text-sm">
+        <div className="content-main">
+          <div className="text-sm content-summary">
             表示件数: {filteredProducts.length} / {products.length} 件
           </div>
 

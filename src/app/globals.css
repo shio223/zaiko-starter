@@ -161,15 +161,188 @@ body {
   color: #fff;
 }
 
-/* 横スクロール対応 */
+/* 横スクロール対応（スマホ・iPad） */
 .table-scroll-wrapper {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
 
-@media (max-width: 768px) {
-  .access-table {
-    min-width: 900px;
+.table-scroll-wrapper .access-table {
+  min-width: 900px;
+}
+
+/* ===== 共通レイアウト（レスポンシブ） ===== */
+
+.app-layout {
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.app-layout-inner {
+  margin: 0 auto;
+  max-width: 1400px;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--border-dark);
+  padding-bottom: 8px;
+}
+
+.page-header-title {
+  font-size: 18px;
+  font-weight: bold;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+}
+
+.page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 在庫リスト・マスタ保守の2カラムレイアウト */
+.content-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.content-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.content-summary {
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.content-summary-selected {
+  margin-left: 16px;
+}
+
+.search-filter-panel {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* マスタ保守タブ（棚番・製品・担当者） */
+.master-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.master-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  font-family: inherit;
+  color: #000;
+  background: linear-gradient(180deg, #e8e8e8 0%, #c8c8c8 100%);
+  border: 2px outset #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+}
+
+.master-tab:hover {
+  background: linear-gradient(180deg, #f0f0f0 0%, #d0d0d0 100%);
+}
+
+.master-tab-active {
+  background: linear-gradient(180deg, #ffffcc 0%, #ffff99 100%);
+  border-style: inset;
+}
+
+/* iPad以上: 検索パネルを左に固定 */
+@media (min-width: 768px) {
+  .content-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .search-filter-panel {
+    width: 220px;
+  }
+}
+
+/* タッチ操作向け（iPad・スマホ） */
+@media (max-width: 1023px) {
+  .btn-access {
+    min-height: 44px;
+    min-width: 88px;
+    padding: 8px 14px;
+  }
+
+  .access-table th,
+  .access-table td {
+    padding: 8px 10px;
+  }
+
+  .access-table tbody tr {
+    cursor: pointer;
+  }
+
+  .menu-btn {
+    min-height: 48px;
+    min-width: 120px;
+  }
+
+  .menu-icon-box {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* スマホ */
+@media (max-width: 640px) {
+  .app-layout {
+    padding: 8px;
+  }
+
+  .page-header-title {
+    font-size: 16px;
+    width: 100%;
+  }
+
+  .page-header-actions {
+    width: 100%;
+  }
+
+  .page-header-actions .btn-access {
+    flex: 1 1 auto;
+    min-width: 72px;
+  }
+
+  .master-tab {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 120px;
+  }
+
+  .content-summary-selected {
+    display: block;
+    margin-left: 0;
+    margin-top: 4px;
   }
 }
 
@@ -331,7 +504,7 @@ body {
 
 .menu-item-wide .menu-btn {
   flex: 1;
-  min-width: 0;
+  min-width: 120px;
 }
 
 .menu-number {
@@ -362,7 +535,7 @@ body {
 .menu-btn {
   flex: 1;
   min-height: 46px;
-  min-width: 0;
+  min-width: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -374,7 +547,8 @@ body {
   cursor: pointer;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
   white-space: nowrap;
-  padding: 0 6px;
+  writing-mode: horizontal-tb;
+  padding: 0 10px;
 }
 
 .menu-btn-blue {
@@ -417,12 +591,68 @@ body {
   border-style: inset;
 }
 
-@media (max-width: 780px) {
+/* ===== メインメニュー レスポンシブ ===== */
+/* PC（1024px以上）: Access版と同じ3列 */
+@media (min-width: 1024px) {
+  .menu-columns {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .menu-column-right {
+    min-height: 100%;
+  }
+
+  .menu-spacer {
+    display: block;
+  }
+}
+
+/* iPad（641px〜1023px）: 2列 */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .menu-columns {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .menu-column-right {
+    grid-column: 1 / -1;
+  }
+
+  .menu-spacer {
+    display: none;
+  }
+
+  .menu-window {
+    max-width: 720px;
+  }
+}
+
+/* スマホ（640px以下）: 1列 */
+@media (max-width: 640px) {
+  .menu-screen {
+    padding: 8px;
+    align-items: flex-start;
+  }
+
   .menu-columns {
     grid-template-columns: 1fr;
   }
 
   .menu-spacer {
     display: none;
+  }
+
+  .menu-brand-zaiko {
+    font-size: 22px;
+  }
+
+  .menu-brand-starter {
+    font-size: 18px;
+  }
+
+  .menu-sub-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    font-size: 13px;
   }
 }

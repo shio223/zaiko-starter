@@ -25,7 +25,7 @@ export function SearchFilterPanel({
   };
 
   return (
-    <AccessPanel title="検索・絞り込み" className="w-full lg:w-56 shrink-0">
+    <AccessPanel title="検索・絞り込み" className="search-filter-panel">
       <AccessInput
         id="search-part-number"
         label="品番"
