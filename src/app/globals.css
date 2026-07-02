@@ -1,0 +1,428 @@
+@import "tailwindcss";
+
+/*
+ * Zaiko STARTER Web版 グローバルスタイル
+ * Access版の見た目を再現（グレー背景・黄色テーブル・立体ボタン）
+ */
+
+:root {
+  --bg-gray: #c0c0c0;
+  --panel-gray: #d4d0c8;
+  --table-header: #ffff99;
+  --table-row-even: #ffffcc;
+  --table-row-odd: #ffffff;
+  --border-dark: #808080;
+  --border-light: #ffffff;
+  --btn-blue: #0066cc;
+  --btn-blue-hover: #0052a3;
+  --btn-green: #339933;
+  --btn-green-hover: #2d862d;
+  --btn-orange: #ff9933;
+  --btn-orange-hover: #e68a2e;
+  --btn-red: #cc0000;
+  --btn-red-hover: #a30000;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: "MS UI Gothic", "Meiryo", "Hiragino Kaku Gothic ProN", sans-serif;
+  font-size: 14px;
+  background-color: var(--bg-gray);
+  color: #000;
+}
+
+/* Access風の立体的ボタン */
+.btn-access {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  border: 2px outset;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn-access:active {
+  border-style: inset;
+}
+
+.btn-access:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-blue {
+  background-color: var(--btn-blue);
+}
+.btn-blue:hover:not(:disabled) {
+  background-color: var(--btn-blue-hover);
+}
+
+.btn-green {
+  background-color: var(--btn-green);
+}
+.btn-green:hover:not(:disabled) {
+  background-color: var(--btn-green-hover);
+}
+
+.btn-orange {
+  background-color: var(--btn-orange);
+}
+.btn-orange:hover:not(:disabled) {
+  background-color: var(--btn-orange-hover);
+}
+
+.btn-red {
+  background-color: var(--btn-red);
+}
+.btn-red:hover:not(:disabled) {
+  background-color: var(--btn-red-hover);
+}
+
+/* Access風パネル */
+.access-panel {
+  background-color: var(--panel-gray);
+  border: 2px outset var(--border-light);
+  padding: 8px;
+}
+
+.access-input {
+  border: 2px inset var(--border-dark);
+  background-color: #fff;
+  padding: 2px 4px;
+  font-size: 14px;
+  font-family: inherit;
+  width: 100%;
+}
+
+.access-input:focus {
+  outline: 1px dotted #000;
+  outline-offset: -3px;
+}
+
+.access-label {
+  font-size: 13px;
+  margin-bottom: 2px;
+  display: block;
+}
+
+/* テーブル */
+.access-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.access-table th {
+  background-color: var(--table-header);
+  border: 1px solid var(--border-dark);
+  padding: 4px 8px;
+  text-align: center;
+  font-weight: bold;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.access-table td {
+  border: 1px solid var(--border-dark);
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.access-table tbody tr:nth-child(even) {
+  background-color: var(--table-row-even);
+}
+
+.access-table tbody tr:nth-child(odd) {
+  background-color: var(--table-row-odd);
+}
+
+.access-table tbody tr:hover {
+  background-color: #cce5ff;
+}
+
+.access-table tbody tr.selected {
+  background-color: #3399ff;
+  color: #fff;
+}
+
+/* 横スクロール対応 */
+.table-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .access-table {
+    min-width: 900px;
+  }
+}
+
+/* ===== メインメニュー（Access版再現） ===== */
+
+.menu-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: #808080;
+}
+
+.menu-window {
+  width: 100%;
+  max-width: 880px;
+  border: 2px outset #fff;
+  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.menu-title-bar {
+  background: #000;
+  color: #fff;
+  font-size: 12px;
+  padding: 3px 8px;
+}
+
+.menu-brand-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 100%);
+  border-bottom: 1px solid #555;
+}
+
+.menu-brand-left {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.menu-brand-zaiko {
+  font-size: 28px;
+  font-weight: bold;
+  color: #ff9933;
+  font-style: italic;
+  letter-spacing: -1px;
+}
+
+.menu-brand-starter {
+  font-size: 22px;
+  font-weight: 300;
+  color: #fff;
+  letter-spacing: 2px;
+}
+
+.menu-is-logo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.menu-is-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #cc0000;
+  color: #fff;
+  font-weight: bold;
+  font-size: 14px;
+  border-radius: 2px;
+}
+
+.menu-is-text {
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.menu-sub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: linear-gradient(180deg, #ffaa44 0%, #ff8800 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.menu-demo-badge {
+  color: #cc0000;
+  margin-right: 8px;
+}
+
+.menu-version {
+  color: #fff;
+}
+
+.menu-body {
+  background: repeating-linear-gradient(
+    180deg,
+    #d8d8d8 0px,
+    #d8d8d8 1px,
+    #cccccc 1px,
+    #cccccc 2px
+  );
+  padding: 20px 20px 16px;
+  min-height: 400px;
+}
+
+.menu-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px 14px;
+  align-items: start;
+}
+
+.menu-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.menu-column-right {
+  min-height: 100%;
+}
+
+.menu-spacer {
+  flex: 1;
+  min-height: 24px;
+}
+
+.menu-item-link {
+  display: block;
+  text-decoration: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.menu-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.menu-item-wide .menu-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-number {
+  font-size: 16px;
+  color: #cc0000;
+  font-weight: bold;
+  min-width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.menu-icon-box {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
+  border: 2px outset #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.menu-icon-svg {
+  width: 36px;
+  height: 36px;
+}
+
+.menu-btn {
+  flex: 1;
+  min-height: 46px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: bold;
+  color: #fff;
+  border: 2px outset;
+  border-radius: 3px;
+  cursor: pointer;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  padding: 0 6px;
+}
+
+.menu-btn-blue {
+  background: linear-gradient(180deg, #3388dd 0%, #0055aa 100%);
+  border-color: #66aaee #003377 #003377 #66aaee;
+}
+
+.menu-btn-green {
+  background: linear-gradient(180deg, #44bb44 0%, #228822 100%);
+  border-color: #66dd66 #116611 #116611 #66dd66;
+}
+
+.menu-btn-orange {
+  background: linear-gradient(180deg, #ffaa44 0%, #dd7700 100%);
+  border-color: #ffcc66 #aa5500 #aa5500 #ffcc66;
+}
+
+.menu-btn-red {
+  background: linear-gradient(180deg, #ee3333 0%, #aa0000 100%);
+  border-color: #ff6666 #770000 #770000 #ff6666;
+}
+
+.menu-item-link:hover .menu-btn-blue {
+  background: linear-gradient(180deg, #4499ee 0%, #0066bb 100%);
+}
+
+.menu-item-link:hover .menu-btn-green {
+  background: linear-gradient(180deg, #55cc55 0%, #339933 100%);
+}
+
+.menu-item-link:hover .menu-btn-orange {
+  background: linear-gradient(180deg, #ffbb55 0%, #ee8800 100%);
+}
+
+.menu-item-link:hover .menu-btn-red {
+  background: linear-gradient(180deg, #ff4444 0%, #bb1111 100%);
+}
+
+.menu-item-link:active .menu-btn {
+  border-style: inset;
+}
+
+@media (max-width: 780px) {
+  .menu-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-spacer {
+    display: none;
+  }
+}
