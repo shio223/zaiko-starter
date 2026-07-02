@@ -65,6 +65,34 @@ export async function fetchProductById(id: string): Promise<Product | null> {
   return data as Product;
 }
 
+/** 品番の重複チェック（編集時は自分自身を除外） */
+export async function isPartNumberTaken(
+  partNumber: string,
+  excludeId?: string
+): Promise<boolean> {
+  const trimmed = partNumber.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  let query = getSupabaseClient()
+    .from(PRODUCTS_TABLE)
+    .select("id")
+    .eq("part_number", trimmed);
+
+  if (excludeId) {
+    query = query.neq("id", excludeId);
+  }
+
+  const { data, error } = await query.limit(1);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data?.length ?? 0) > 0;
+}
+
 /** 新規登録 */
 export async function createProduct(
   product: Omit<Product, "id" | "stock_amount" | "created_at" | "updated_at">

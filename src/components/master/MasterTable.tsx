@@ -1,6 +1,6 @@
 /**
  * 製品マスタの一覧表
- * 行クリックで選択 → 編集・削除に使用
+ * 行クリックで選択、ダブルクリックで編集
  */
 "use client";
 
@@ -11,19 +11,26 @@ type MasterTableProps = {
   products: Product[];
   selectedId?: string | null;
   onSelect: (product: Product) => void;
+  onEdit?: (product: Product) => void;
 };
 
-export function MasterTable({ products, selectedId, onSelect }: MasterTableProps) {
+export function MasterTable({
+  products,
+  selectedId,
+  onSelect,
+  onEdit,
+}: MasterTableProps) {
   if (products.length === 0) {
     return (
       <div className="access-panel p-4 text-center text-sm">
-        製品マスタにデータがありません
+        製品マスタにデータがありません。新規登録から追加してください。
       </div>
     );
   }
 
   return (
     <div className="table-scroll-wrapper access-panel flex-1">
+      <p className="master-table-hint">行をクリックで選択 / ダブルクリックで編集</p>
       <table className="access-table">
         <thead>
           <tr>
@@ -45,6 +52,7 @@ export function MasterTable({ products, selectedId, onSelect }: MasterTableProps
               key={product.id}
               className={selectedId === product.id ? "selected" : ""}
               onClick={() => onSelect(product)}
+              onDoubleClick={() => onEdit?.(product)}
               style={{ cursor: "pointer" }}
             >
               <td>{product.shelf_number}</td>

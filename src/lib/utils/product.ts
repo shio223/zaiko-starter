@@ -1,4 +1,4 @@
-import type { Product, SearchFilter } from "@/lib/types/product";
+import type { Product, ProductFormData, SearchFilter } from "@/lib/types/product";
 
 /** 部分一致検索（大文字小文字を区別しない） */
 function matchesField(value: string, query: string): boolean {
@@ -69,5 +69,18 @@ export function productToFormData(product: Product) {
     reorder_point: product.reorder_point,
     memo: product.memo,
     last_inventory_count: product.last_inventory_count,
+  };
+}
+
+/** 保存前に文字列項目をトリム */
+export function normalizeProductFormData(data: ProductFormData): ProductFormData {
+  return {
+    ...data,
+    shelf_number: data.shelf_number.trim(),
+    supplier: data.supplier.trim(),
+    department: data.department.trim(),
+    part_number: data.part_number.trim(),
+    product_name: data.product_name.trim(),
+    memo: data.memo.trim(),
   };
 }

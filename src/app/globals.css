@@ -113,6 +113,22 @@ body {
   outline-offset: -3px;
 }
 
+.access-input-error {
+  border-color: #cc0000;
+  background-color: #fff5f5;
+}
+
+.field-error {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #cc0000;
+}
+
+.field-required {
+  color: #cc0000;
+  font-weight: bold;
+}
+
 .access-label {
   font-size: 13px;
   margin-bottom: 2px;
@@ -272,6 +288,58 @@ body {
 .master-tab-active {
   background: linear-gradient(180deg, #ffffcc 0%, #ffff99 100%);
   border-style: inset;
+}
+
+.master-notice {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: bold;
+  border: 2px outset #fff;
+}
+
+.master-notice-success {
+  background-color: #e8ffe8;
+  color: #006600;
+}
+
+.master-notice-error {
+  background-color: #fff5f5;
+  color: #cc0000;
+}
+
+.master-table-hint {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #333;
+}
+
+.product-form-panel {
+  max-width: 720px;
+}
+
+.product-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 16px;
+}
+
+.product-form-full {
+  grid-column: 1 / -1;
+}
+
+.product-form-summary {
+  margin-top: 8px;
+  border-top: 1px solid var(--border-dark);
+  padding-top: 8px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+@media (min-width: 640px) {
+  .product-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* iPad以上: 検索パネルを左に固定 */

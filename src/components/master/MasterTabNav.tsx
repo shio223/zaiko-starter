@@ -1,11 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 /** マスタ保守のタブ種別 */
 export type MasterTab = "shelf" | "product" | "person";
 
 type MasterTabNavProps = {
   active: MasterTab;
-  onChange: (tab: MasterTab) => void;
 };
 
 const tabs: { id: MasterTab; label: string }[] = [
@@ -16,9 +17,15 @@ const tabs: { id: MasterTab; label: string }[] = [
 
 /**
  * マスタ保守のタブ切り替え（Access版と同じ3タブ）
- * スマホでも横書き・nowrap で表示
+ * 製品マスタ以外は一覧画面へ遷移
  */
-export function MasterTabNav({ active, onChange }: MasterTabNavProps) {
+export function MasterTabNav({ active }: MasterTabNavProps) {
+  const router = useRouter();
+
+  const handleTab = (tab: MasterTab) => {
+    router.push(`/master?tab=${tab}`);
+  };
+
   return (
     <div className="master-tabs" role="tablist" aria-label="マスタ保守">
       {tabs.map((tab) => (
@@ -28,7 +35,7 @@ export function MasterTabNav({ active, onChange }: MasterTabNavProps) {
           role="tab"
           aria-selected={active === tab.id}
           className={`master-tab ${active === tab.id ? "master-tab-active" : ""}`}
-          onClick={() => onChange(tab.id)}
+          onClick={() => handleTab(tab.id)}
         >
           {tab.label}
         </button>

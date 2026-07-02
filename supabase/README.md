@@ -75,4 +75,24 @@ supabase/migrations/002_upgrade_existing_products.sql
 |---|---|
 | `000_inspect_products_schema.sql` | 既存スキーマ確認 |
 | `002_upgrade_existing_products.sql` | **既存プロジェクト用**（これを使う） |
+| `003_products_part_number_unique.sql` | 品番の重複防止（製品マスタ完成時に実行） |
+| `004_create_shelves.sql` | 棚番マスタ（shelves テーブル作成） |
 | `001_create_products.sql` | 参考用（新規作成時のみ。既存では使わない） |
+
+## 棚番マスタ（shelves テーブル）
+
+棚番マスタ機能を使う前に、SQL Editor で以下を実行してください:
+
+```
+supabase/migrations/004_create_shelves.sql
+```
+
+| カラム名 | 説明 |
+|---|---|
+| id | 主キー（UUID） |
+| shelf_number | 棚番（重複不可） |
+| shelf_name | 棚名 |
+| location | 保管場所 |
+| memo | 備考 |
+| created_at | 作成日時 |
+| updated_at | 更新日時 |

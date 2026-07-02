@@ -1,6 +1,5 @@
 /**
  * 製品マスタ編集画面
- * URL の [id] から対象製品を取得してフォームに表示
  */
 "use client";
 
@@ -8,16 +7,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { MasterTabNav } from "@/components/master/MasterTabNav";
 import { ProductForm } from "@/components/master/ProductForm";
 import { AccessButton } from "@/components/ui/AccessButton";
-import {
-  fetchProductById,
-  isSupabaseConfigured,
-  updateProduct,
-} from "@/lib/supabase/client";
+import { fetchProductById, isSupabaseConfigured } from "@/lib/supabase/client";
 import { productToFormData } from "@/lib/utils/product";
+import { saveExistingProduct } from "@/lib/utils/save-product";
 import { emptyProductForm } from "@/lib/types/product";
 import type { ProductFormData } from "@/lib/types/product";
+import type { ProductFormErrors } from "@/lib/utils/product-validation";
 import { formatSupabaseError } from "@/lib/utils/supabase-error";
 
 export default function MasterEditPage() {
@@ -26,13 +24,14 @@ export default function MasterEditPage() {
   const id = params.id as string;
 
   const [formData, setFormData] = useState<ProductFormData>(emptyProductForm);
+  const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadProduct = useCallback(async () => {
     if (!isSupabaseConfigured()) {
-      setError("Supabase（Zaiko STARTER）が未設定です。.env.local を確認してください。");
+      setError("Supabase（Zaiko STARTER）が未設定です。");
       setLoading(false);
       return;
     }
@@ -57,31 +56,31 @@ export default function MasterEditPage() {
   }, [loadProduct]);
 
   const handleSave = async () => {
-    if (!formData.part_number.trim()) {
-      alert("品番を入力してください。");
-      return;
-    }
-    if (!formData.product_name.trim()) {
-      alert("品名を入力してください。");
+    setSaving(true);
+    setError(null);
+    setFormErrors({});
+
+    const result = await saveExistingProduct(id, formData);
+
+    if (result.ok) {
+      router.push("/master?tab=product&notice=updated");
       return;
     }
 
-    try {
-      setSaving(true);
-      setError(null);
-      await updateProduct(id, formData);
-      router.push("/master");
-    } catch (err) {
-      setError(formatSupabaseError(err));
-    } finally {
-      setSaving(false);
+    if ("errors" in result && result.errors) {
+      setFormErrors(result.errors);
+    } else if ("message" in result && result.message) {
+      setError(result.message);
     }
+
+    setSaving(false);
   };
 
   if (loading) {
     return (
       <AppLayout>
-        <PageHeader title="製品マスタ - 編集" />
+        <PageHeader title="マスタ保守 - 製品マスタ 編集" />
+        <MasterTabNav active="product" />
         <div className="access-panel p-4 text-center text-sm">読み込み中...</div>
       </AppLayout>
     );
@@ -89,14 +88,19 @@ export default function MasterEditPage() {
 
   return (
     <AppLayout>
-      <PageHeader title="製品マスタ - 編集">
+      <PageHeader title="マスタ保守 - 製品マスタ 編集">
         <AccessButton variant="green" onClick={handleSave} disabled={saving}>
           {saving ? "更新中..." : "更新"}
         </AccessButton>
-        <AccessButton variant="orange" onClick={() => router.push("/master")}>
+        <AccessButton
+          variant="orange"
+          onClick={() => router.push("/master?tab=product")}
+        >
           キャンセル
         </AccessButton>
       </PageHeader>
+
+      <MasterTabNav active="product" />
 
       {error && (
         <div className="access-panel mb-3 border-2 border-red-600 p-3 text-sm text-red-700">
@@ -104,7 +108,12 @@ export default function MasterEditPage() {
         </div>
       )}
 
-      <ProductForm data={formData} onChange={setFormData} />
+      <ProductForm
+        data={formData}
+        onChange={setFormData}
+        errors={formErrors}
+        disabled={saving}
+      />
     </AppLayout>
   );
 }
