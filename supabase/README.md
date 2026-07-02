@@ -77,6 +77,8 @@ supabase/migrations/002_upgrade_existing_products.sql
 | `002_upgrade_existing_products.sql` | **既存プロジェクト用**（これを使う） |
 | `003_products_part_number_unique.sql` | 品番の重複防止（製品マスタ完成時に実行） |
 | `004_create_shelves.sql` | 棚番マスタ（shelves テーブル作成） |
+| `005_create_stock_movements.sql` | 入出庫履歴（stock_movements テーブル） |
+| `006_create_inventory_counts.sql` | 棚卸（inventory_counts / inventory_count_lines） |
 | `001_create_products.sql` | 参考用（新規作成時のみ。既存では使わない） |
 
 ## 棚番マスタ（shelves テーブル）
@@ -96,3 +98,35 @@ supabase/migrations/004_create_shelves.sql
 | memo | 備考 |
 | created_at | 作成日時 |
 | updated_at | 更新日時 |
+
+## 入出庫履歴・月別移動量（stock_movements テーブル）
+
+入出庫履歴・月別移動量・KEYENCE取込を使う前に実行:
+
+```
+supabase/migrations/005_create_stock_movements.sql
+```
+
+## 棚卸（inventory_counts テーブル）
+
+棚卸リスト・棚卸開始を使う前に実行:
+
+```
+supabase/migrations/006_create_inventory_counts.sql
+```
+
+## 入出庫履歴・月別移動量（stock_movements テーブル）
+
+入出庫履歴・月別移動量・KEYENCE取込を使う前に実行:
+
+```
+supabase/migrations/005_create_stock_movements.sql
+```
+
+## 棚卸（inventory_counts テーブル）
+
+棚卸リスト・棚卸開始を使う前に実行:
+
+```
+supabase/migrations/006_create_inventory_counts.sql
+```

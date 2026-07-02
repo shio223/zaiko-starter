@@ -44,10 +44,15 @@ export function InventoryTable({
           </tr>
         </thead>
         <tbody>
-          {products.map((product) => (
+          {products.map((product) => {
+            const isLowStock =
+              product.reorder_point > 0 &&
+              product.quantity <= product.reorder_point;
+
+            return (
             <tr
               key={product.id}
-              className={selectedId === product.id ? "selected" : ""}
+              className={`${selectedId === product.id ? "selected" : ""} ${isLowStock ? "row-low-stock" : ""}`}
               onClick={() => onSelect?.(product)}
               style={{ cursor: onSelect ? "pointer" : "default" }}
             >
@@ -62,7 +67,8 @@ export function InventoryTable({
               <td className="text-right">{formatNumber(product.reorder_point)}</td>
               <td>{product.memo}</td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
