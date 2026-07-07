@@ -1,17 +1,23 @@
 /**
  * バーコード印刷画面
+ * Brother QL-700（62mm幅）向け
  */
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SearchFilterPanel } from "@/components/inventory/SearchFilterPanel";
 import { BarcodeLabel } from "@/components/barcode/BarcodeLabel";
+import { BarcodePrintPreview } from "@/components/barcode/BarcodePrintPreview";
 import { AccessButton } from "@/components/ui/AccessButton";
+import { AccessInput } from "@/components/ui/AccessInput";
+import { AccessPanel } from "@/components/ui/AccessPanel";
 import { fetchProducts, isSupabaseConfigured } from "@/lib/supabase/client";
 import { filterProducts } from "@/lib/utils/product";
 import { formatSupabaseError } from "@/lib/utils/supabase-error";
+import { BARCODE_LABEL_CONFIG } from "@/lib/barcode/config";
 import type { Product, SearchFilter } from "@/lib/types/product";
 
 const defaultFilter: SearchFilter = {
@@ -26,6 +32,7 @@ export default function BarcodePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filter, setFilter] = useState<SearchFilter>(defaultFilter);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [copies, setCopies] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,6 +68,15 @@ export default function BarcodePage() {
     selectedIds.has(p.id)
   );
 
+  const printItems = useMemo(
+    () =>
+      selectedProducts.map((product) => ({
+        product,
+        copies: Math.max(1, copies),
+      })),
+    [selectedProducts, copies]
+  );
+
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -88,10 +104,18 @@ export default function BarcodePage() {
   return (
     <AppLayout>
       <PageHeader title="バーコード印刷">
-        <AccessButton variant="green" onClick={selectAll} disabled={filteredProducts.length === 0}>
+        <AccessButton
+          variant="green"
+          onClick={selectAll}
+          disabled={filteredProducts.length === 0}
+        >
           全選択
         </AccessButton>
-        <AccessButton variant="blue" onClick={clearSelection} disabled={selectedIds.size === 0}>
+        <AccessButton
+          variant="blue"
+          onClick={clearSelection}
+          disabled={selectedIds.size === 0}
+        >
           選択解除
         </AccessButton>
         <AccessButton
@@ -104,8 +128,8 @@ export default function BarcodePage() {
         <AccessButton variant="orange" onClick={loadProducts} disabled={loading}>
           更新
         </AccessButton>
-        <Link href="/keyence">
-          <AccessButton variant="blue">KEYENCE連携</AccessButton>
+        <Link href="/data-transfer">
+          <AccessButton variant="blue">データ転送</AccessButton>
         </Link>
       </PageHeader>
 
@@ -116,11 +140,30 @@ export default function BarcodePage() {
       )}
 
       <div className="content-layout screen-only">
-        <SearchFilterPanel
-          filter={filter}
-          onChange={setFilter}
-          onClear={() => setFilter(defaultFilter)}
-        />
+        <div className="content-sidebar-stack">
+          <SearchFilterPanel
+            filter={filter}
+            onChange={setFilter}
+            onClear={() => setFilter(defaultFilter)}
+          />
+          <AccessPanel title="印刷設定" className="search-filter-panel">
+            <AccessInput
+              id="barcode-copies"
+              label="印刷枚数（各商品）"
+              type="number"
+              min={1}
+              max={99}
+              value={copies}
+              onChange={(e) =>
+                setCopies(Math.max(1, Number(e.target.value) || 1))
+              }
+            />
+            <p className="text-xs">
+              ラベル幅: {BARCODE_LABEL_CONFIG.labelWidthMm}mm /
+              規格: {BARCODE_LABEL_CONFIG.format}
+            </p>
+          </AccessPanel>
+        </div>
 
         <div className="content-main">
           <div className="text-sm content-summary">
@@ -130,47 +173,58 @@ export default function BarcodePage() {
           {loading ? (
             <div className="access-panel p-4 text-center text-sm">読み込み中...</div>
           ) : (
-            <div className="table-scroll-wrapper access-panel">
-              <table className="access-table">
-                <thead>
-                  <tr>
-                    <th>選択</th>
-                    <th>品番</th>
-                    <th>品名</th>
-                    <th>棚番</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.map((p) => (
-                    <tr key={p.id}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(p.id)}
-                          onChange={() => toggleSelect(p.id)}
-                        />
-                      </td>
-                      <td>{p.part_number}</td>
-                      <td>{p.product_name}</td>
-                      <td>{p.shelf_number}</td>
+            <>
+              <div className="table-scroll-wrapper access-panel mb-3">
+                <table className="access-table">
+                  <thead>
+                    <tr>
+                      <th>選択</th>
+                      <th>棚番</th>
+                      <th>品番</th>
+                      <th>品名</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredProducts.map((p) => (
+                      <tr
+                        key={p.id}
+                        className={selectedIds.has(p.id) ? "selected" : ""}
+                        onClick={() => toggleSelect(p.id)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(p.id)}
+                            onChange={() => toggleSelect(p.id)}
+                          />
+                        </td>
+                        <td>{p.shelf_number}</td>
+                        <td>{p.part_number}</td>
+                        <td>{p.product_name}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <BarcodePrintPreview items={printItems} />
+            </>
           )}
         </div>
       </div>
 
       <div className="barcode-print-area print-only">
-        {selectedProducts.map((p) => (
-          <BarcodeLabel
-            key={p.id}
-            partNumber={p.part_number}
-            productName={p.product_name}
-            shelfNumber={p.shelf_number}
-          />
-        ))}
+        {printItems.flatMap(({ product, copies: count }) =>
+          Array.from({ length: count }, (_, index) => (
+            <BarcodeLabel
+              key={`${product.id}-print-${index}`}
+              partNumber={product.part_number}
+              productName={product.product_name}
+              shelfNumber={product.shelf_number}
+            />
+          ))
+        )}
       </div>
     </AppLayout>
   );
