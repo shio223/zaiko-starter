@@ -8,6 +8,18 @@
 !.yarn/releases
 !.yarn/versions
 
+# local toolchains (do not ship to GitHub / Vercel)
+.miniforge/
+.mdbtools/
+.venv/
+.venv-mdb/
+venv/
+Miniforge3.sh
+mdbtools/
+mdbtools-*/
+mdbtools-*.tar.gz
+supabase/.temp/
+
 # testing
 /coverage
 
