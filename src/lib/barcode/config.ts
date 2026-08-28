@@ -13,8 +13,8 @@ export const BARCODE_LABEL_CONFIG = {
   format: "CODE39" as BarcodeFormat,
   /** バーコードモジュール幅（視認性・読取性向上） */
   width: 1.8,
-  /** バーコード高さ（px） */
-  height: 52,
+  /** バーコード高さ（px: 文字拡大のためコンパクト化） */
+  height: 34,
   /** 品番はラベル下部に別表示するため、バーコード内の文字は出さない */
   displayValue: false,
   fontSize: 12,
