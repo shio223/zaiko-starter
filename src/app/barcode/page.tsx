@@ -208,7 +208,7 @@ export default function BarcodePage() {
               }
             />
             <p className="text-xs">
-              QL-700 {BARCODE_LABEL_CONFIG.labelWidthMm}mmロール /
+              QL-700 {BARCODE_LABEL_CONFIG.rollWidthMm}mmロール（有効幅 {BARCODE_LABEL_CONFIG.labelWidthMm}mm） /
               Code-39 / 倍率100%・余白なし
             </p>
           </AccessPanel>

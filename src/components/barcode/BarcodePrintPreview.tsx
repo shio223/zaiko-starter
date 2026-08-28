@@ -24,7 +24,8 @@ export function BarcodePrintPreview({ items }: BarcodePrintPreviewProps) {
   return (
     <AccessPanel title="ラベルプレビュー" className="barcode-preview-panel">
       <p className="text-sm mb-2">
-        Brother QL-700（{BARCODE_LABEL_CONFIG.labelWidthMm}mmロール）/
+        Brother QL-700（{BARCODE_LABEL_CONFIG.rollWidthMm}mmロール /
+        有効幅 {BARCODE_LABEL_CONFIG.labelWidthMm}mm）/
         Code-39 / 合計 {totalLabels} 枚
       </p>
       <div className="barcode-preview-scroll">
