@@ -1,13 +1,16 @@
 "use client";
 
-import type { StockMovement, StockMovementFilter } from "@/lib/types/stock-movement";
+import type {
+  InventoryTransaction,
+  InventoryTransactionFilter,
+} from "@/lib/types/inventory-transaction";
 import { AccessPanel } from "@/components/ui/AccessPanel";
 import { AccessInput } from "@/components/ui/AccessInput";
 import { AccessButton } from "@/components/ui/AccessButton";
 
 type HistorySearchPanelProps = {
-  filter: StockMovementFilter;
-  onChange: (filter: StockMovementFilter) => void;
+  filter: InventoryTransactionFilter;
+  onChange: (filter: InventoryTransactionFilter) => void;
   onClear: () => void;
 };
 
@@ -17,9 +20,9 @@ export function HistorySearchPanel({
   onChange,
   onClear,
 }: HistorySearchPanelProps) {
-  const update = <K extends keyof StockMovementFilter>(
+  const update = <K extends keyof InventoryTransactionFilter>(
     key: K,
-    value: StockMovementFilter[K]
+    value: InventoryTransactionFilter[K]
   ) => {
     onChange({ ...filter, [key]: value });
   };
@@ -33,10 +36,10 @@ export function HistorySearchPanel({
         onChange={(e) => update("partNumber", e.target.value)}
       />
       <AccessInput
-        id="history-product-name"
-        label="品名"
-        value={filter.productName}
-        onChange={(e) => update("productName", e.target.value)}
+        id="history-shelf-code"
+        label="棚番"
+        value={filter.shelfCode}
+        onChange={(e) => update("shelfCode", e.target.value)}
       />
       <div className="mb-2">
         <label htmlFor="history-type" className="access-label">
@@ -45,9 +48,12 @@ export function HistorySearchPanel({
         <select
           id="history-type"
           className="access-input w-full"
-          value={filter.movementType}
+          value={filter.transactionType}
           onChange={(e) =>
-            update("movementType", e.target.value as StockMovementFilter["movementType"])
+            update(
+              "transactionType",
+              e.target.value as InventoryTransactionFilter["transactionType"]
+            )
           }
         >
           <option value="">すべて</option>
@@ -78,11 +84,11 @@ export function HistorySearchPanel({
 }
 
 type HistoryTableProps = {
-  movements: StockMovement[];
+  transactions: InventoryTransaction[];
 };
 
-export function HistoryTable({ movements }: HistoryTableProps) {
-  if (movements.length === 0) {
+export function HistoryTable({ transactions }: HistoryTableProps) {
+  if (transactions.length === 0) {
     return (
       <div className="access-panel p-4 text-center text-sm">
         該当する履歴がありません
@@ -98,32 +104,36 @@ export function HistoryTable({ movements }: HistoryTableProps) {
             <th>日時</th>
             <th>区分</th>
             <th>品番</th>
-            <th>品名</th>
             <th>棚番</th>
-            <th>数量</th>
-            <th>変更前</th>
-            <th>変更後</th>
-            <th>備考</th>
+            <th>入庫数</th>
+            <th>出庫数</th>
+            <th>処理前在庫</th>
+            <th>処理後在庫</th>
+            <th>担当者</th>
+            <th>場所</th>
+            <th>コメント</th>
           </tr>
         </thead>
         <tbody>
-          {movements.map((m) => (
-            <tr key={m.id}>
-              <td>{new Date(m.performed_at).toLocaleString("ja-JP")}</td>
+          {transactions.map((row) => (
+            <tr key={row.id}>
+              <td>{new Date(row.transaction_at).toLocaleString("ja-JP")}</td>
               <td>
-                {m.movement_type === "in"
+                {row.transaction_type === "in"
                   ? "入庫"
-                  : m.movement_type === "out"
+                  : row.transaction_type === "out"
                     ? "出庫"
                     : "調整"}
               </td>
-              <td>{m.part_number}</td>
-              <td>{m.product_name}</td>
-              <td>{m.shelf_number}</td>
-              <td className="text-right">{m.quantity}</td>
-              <td className="text-right">{m.quantity_before}</td>
-              <td className="text-right">{m.quantity_after}</td>
-              <td>{m.memo}</td>
+              <td>{row.part_number}</td>
+              <td>{row.shelf_code}</td>
+              <td className="text-right">{row.inbound_qty}</td>
+              <td className="text-right">{row.outbound_qty}</td>
+              <td className="text-right">{row.previous_stock}</td>
+              <td className="text-right">{row.current_stock}</td>
+              <td>{row.staff_code ?? ""}</td>
+              <td>{row.location}</td>
+              <td>{row.comment}</td>
             </tr>
           ))}
         </tbody>

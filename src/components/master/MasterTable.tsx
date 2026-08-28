@@ -39,7 +39,7 @@ export function MasterTable({
             <th>部門</th>
             <th>品番</th>
             <th>品名</th>
-            <th>在庫数</th>
+            <th>現在庫</th>
             <th>単価</th>
             <th>在庫金額</th>
             <th>発注点</th>
@@ -55,16 +55,16 @@ export function MasterTable({
               onDoubleClick={() => onEdit?.(product)}
               style={{ cursor: "pointer" }}
             >
-              <td>{product.shelf_number}</td>
+              <td>{product.shelf_code}</td>
               <td>{product.supplier}</td>
               <td>{product.department}</td>
               <td>{product.part_number}</td>
-              <td>{product.product_name}</td>
+              <td>{product.name}</td>
               <td className="text-right">{formatNumber(product.quantity)}</td>
               <td className="text-right">{formatCurrency(product.unit_price)}</td>
               <td className="text-right">{formatCurrency(product.stock_amount)}</td>
               <td className="text-right">{formatNumber(product.reorder_point)}</td>
-              <td>{product.memo}</td>
+              <td>{product.note}</td>
             </tr>
           ))}
         </tbody>

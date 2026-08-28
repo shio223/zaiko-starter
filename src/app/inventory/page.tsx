@@ -18,13 +18,14 @@ import { performStockMovement } from "@/lib/supabase/stock-movements";
 import { filterProducts } from "@/lib/utils/product";
 import { exportProductsToCsv } from "@/lib/utils/product-export";
 import { formatSupabaseError } from "@/lib/utils/supabase-error";
-import type { Product, SearchFilter } from "@/lib/types/product";
+import { isBelowReorderPoint, type Product, type SearchFilter } from "@/lib/types/product";
 
 const defaultFilter: SearchFilter = {
   partNumber: "",
   productName: "",
   shelfNumber: "",
   supplier: "",
+  department: "",
   mode: "AND",
 };
 
@@ -72,9 +73,7 @@ export default function InventoryPage() {
     if (!showLowStockOnly) {
       return searched;
     }
-    return searched.filter(
-      (p) => p.reorder_point > 0 && p.quantity <= p.reorder_point
-    );
+    return searched.filter((p) => isBelowReorderPoint(p));
   }, [products, filter, showLowStockOnly]);
 
   const selectedProduct =
@@ -164,7 +163,7 @@ export default function InventoryPage() {
             {selectedProduct && (
               <span className="content-summary-selected">
                 選択中: {selectedProduct.part_number} -{" "}
-                {selectedProduct.product_name}
+                {selectedProduct.name}
               </span>
             )}
           </div>

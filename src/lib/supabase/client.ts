@@ -6,7 +6,7 @@
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { PRODUCTS_SELECT, PRODUCTS_TABLE } from "@/lib/supabase/products-schema";
-import type { Product } from "@/lib/types/product";
+import type { Product, ProductFormData } from "@/lib/types/product";
 
 // クライアントは1つだけ生成（遅延初期化）
 let supabaseInstance: SupabaseClient | null = null;
@@ -33,18 +33,33 @@ export function isSupabaseConfigured(): boolean {
   );
 }
 
-/** 全製品を品番順で取得 */
+/** 全製品を品番順で取得（Supabase 既定1000件上限を超える場合はページング） */
 export async function fetchProducts(): Promise<Product[]> {
-  const { data, error } = await getSupabaseClient()
-    .from(PRODUCTS_TABLE)
-    .select(PRODUCTS_SELECT)
-    .order("part_number", { ascending: true });
+  const pageSize = 1000;
+  let from = 0;
+  const all: Product[] = [];
 
-  if (error) {
-    throw new Error(error.message);
+  while (true) {
+    const { data, error } = await getSupabaseClient()
+      .from(PRODUCTS_TABLE)
+      .select(PRODUCTS_SELECT)
+      .order("part_number", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const page = (data ?? []) as unknown as Product[];
+    all.push(...page);
+
+    if (page.length < pageSize) {
+      break;
+    }
+    from += pageSize;
   }
 
-  return (data ?? []) as unknown as Product[];
+  return all;
 }
 
 /** ID で1件取得（編集画面用） */
@@ -95,11 +110,15 @@ export async function isPartNumberTaken(
 
 /** 新規登録 */
 export async function createProduct(
-  product: Omit<Product, "id" | "stock_amount" | "created_at" | "updated_at">
+  product: ProductFormData & { print_count?: number }
 ): Promise<Product> {
+  const payload = {
+    ...product,
+    print_count: product.print_count ?? 0,
+  };
   const { data, error } = await getSupabaseClient()
     .from(PRODUCTS_TABLE)
-    .insert(product)
+    .insert(payload)
     .select()
     .single();
 
@@ -113,7 +132,7 @@ export async function createProduct(
 /** 更新 */
 export async function updateProduct(
   id: string,
-  product: Partial<Omit<Product, "id" | "created_at" | "updated_at">>
+  product: Partial<ProductFormData & { print_count?: number }>
 ): Promise<Product> {
   const { data, error } = await getSupabaseClient()
     .from(PRODUCTS_TABLE)

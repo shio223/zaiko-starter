@@ -1,6 +1,7 @@
 /**
  * バーコード印刷画面
- * Brother QL-700（62mm幅）向け
+ * Brother QL-700（62mmロール）向け
+ * 操作: 棚番選択 → 商品一覧 → チェック → 枚数 → プレビュー → 印刷
  */
 "use client";
 
@@ -25,8 +26,21 @@ const defaultFilter: SearchFilter = {
   productName: "",
   shelfNumber: "",
   supplier: "",
+  department: "",
   mode: "AND",
 };
+
+/** shelf_code の DISTINCT（文字列ソート、先頭ゼロ保持） */
+function distinctShelfCodes(products: Product[]): string[] {
+  const set = new Set<string>();
+  for (const p of products) {
+    const shelf = p.shelf_code;
+    if (shelf !== undefined && shelf !== null && String(shelf) !== "") {
+      set.add(String(shelf));
+    }
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "ja"));
+}
 
 export default function BarcodePage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -59,10 +73,31 @@ export default function BarcodePage() {
     loadProducts();
   }, [loadProducts]);
 
-  const filteredProducts = useMemo(
-    () => filterProducts(products, filter),
-    [products, filter]
+  const shelfOptions = useMemo(
+    () => distinctShelfCodes(products),
+    [products]
   );
+
+  const selectedShelf = filter.shelfNumber;
+
+  /** 棚番選択後: その棚の商品のみ。未選択時は空 */
+  const productsOnShelf = useMemo(() => {
+    if (!selectedShelf) {
+      return [];
+    }
+    return products.filter((p) => String(p.shelf_code) === selectedShelf);
+  }, [products, selectedShelf]);
+
+  /** 棚内で品番・品名などの追加絞り込み（棚番条件は除外） */
+  const filteredProducts = useMemo(() => {
+    if (!selectedShelf) {
+      return [];
+    }
+    return filterProducts(productsOnShelf, {
+      ...filter,
+      shelfNumber: "",
+    });
+  }, [productsOnShelf, filter, selectedShelf]);
 
   const selectedProducts = filteredProducts.filter((p) =>
     selectedIds.has(p.id)
@@ -76,6 +111,19 @@ export default function BarcodePage() {
       })),
     [selectedProducts, copies]
   );
+
+  const handleFilterChange = (next: SearchFilter) => {
+    const shelfChanged = next.shelfNumber !== filter.shelfNumber;
+    setFilter(next);
+    if (shelfChanged) {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleClearFilter = () => {
+    setFilter(defaultFilter);
+    setSelectedIds(new Set());
+  };
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -143,8 +191,9 @@ export default function BarcodePage() {
         <div className="content-sidebar-stack">
           <SearchFilterPanel
             filter={filter}
-            onChange={setFilter}
-            onClear={() => setFilter(defaultFilter)}
+            onChange={handleFilterChange}
+            onClear={handleClearFilter}
+            shelfOptions={shelfOptions}
           />
           <AccessPanel title="印刷設定" className="search-filter-panel">
             <AccessInput
@@ -159,19 +208,25 @@ export default function BarcodePage() {
               }
             />
             <p className="text-xs">
-              ラベル幅: {BARCODE_LABEL_CONFIG.labelWidthMm}mm /
-              規格: {BARCODE_LABEL_CONFIG.format}
+              QL-700 {BARCODE_LABEL_CONFIG.labelWidthMm}mmロール /
+              Code-39 / 倍率100%・余白なし
             </p>
           </AccessPanel>
         </div>
 
         <div className="content-main">
           <div className="text-sm content-summary">
-            選択: {selectedProducts.length} / 表示: {filteredProducts.length} 件
+            {selectedShelf
+              ? `棚番: ${selectedShelf} / 選択: ${selectedProducts.length} / 表示: ${filteredProducts.length} 件`
+              : "棚番を選択してください"}
           </div>
 
           {loading ? (
             <div className="access-panel p-4 text-center text-sm">読み込み中...</div>
+          ) : !selectedShelf ? (
+            <div className="access-panel p-4 text-center text-sm">
+              左側で棚番を選択すると、その棚の商品一覧が表示されます。
+            </div>
           ) : (
             <>
               <div className="table-scroll-wrapper access-panel mb-3">
@@ -199,9 +254,9 @@ export default function BarcodePage() {
                             onChange={() => toggleSelect(p.id)}
                           />
                         </td>
-                        <td>{p.shelf_number}</td>
+                        <td>{p.shelf_code}</td>
                         <td>{p.part_number}</td>
-                        <td>{p.product_name}</td>
+                        <td>{p.name}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -220,8 +275,8 @@ export default function BarcodePage() {
             <BarcodeLabel
               key={`${product.id}-print-${index}`}
               partNumber={product.part_number}
-              productName={product.product_name}
-              shelfNumber={product.shelf_number}
+              productName={product.name}
+              shelfNumber={product.shelf_code}
             />
           ))
         )}

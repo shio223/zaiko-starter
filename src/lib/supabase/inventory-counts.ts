@@ -9,7 +9,6 @@ import {
   INVENTORY_COUNTS_TABLE,
 } from "@/lib/supabase/inventory-counts-schema";
 import { fetchProducts } from "@/lib/supabase/client";
-import { recordInventoryAdjustment } from "@/lib/supabase/stock-movements";
 import type {
   InventoryCount,
   InventoryCountFilter,
@@ -105,8 +104,8 @@ export async function createInventoryCount(input: {
     inventory_count_id: count.id,
     product_id: p.id,
     part_number: p.part_number,
-    product_name: p.product_name,
-    shelf_number: p.shelf_number,
+    product_name: p.name,
+    shelf_number: p.shelf_code,
     book_quantity: p.quantity,
     counted_quantity: null,
     variance: null,
@@ -160,47 +159,19 @@ export async function updateInventoryCountLine(
   }
 }
 
-/** 棚卸確定：差異を在庫に反映 */
+/** 棚卸確定：全体を1 RPC（service_role）で原子的に確定 */
 export async function completeInventoryCount(id: string): Promise<void> {
-  const count = await fetchInventoryCountById(id);
-  if (!count) {
-    throw new Error("棚卸が見つかりません。");
-  }
-  if (count.status === "completed") {
-    throw new Error("この棚卸は既に確定済みです。");
-  }
+  const res = await fetch(`/api/inventory/counts/${id}/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({}),
+  });
 
-  for (const line of count.lines) {
-    if (line.counted_quantity === null || !line.product_id) {
-      continue;
-    }
-    if (line.variance === 0) {
-      continue;
-    }
+  const json = (await res.json()) as { error?: string };
 
-    await recordInventoryAdjustment({
-      productId: line.product_id,
-      quantityBefore: line.book_quantity,
-      quantityAfter: line.counted_quantity,
-      partNumber: line.part_number,
-      productName: line.product_name,
-      shelfNumber: line.shelf_number,
-      memo: `棚卸確定: ${count.title}`,
-    });
-
-    await getSupabaseClient()
-      .from("products")
-      .update({ last_inventory_count: line.counted_quantity })
-      .eq("id", line.product_id);
-  }
-
-  const { error } = await getSupabaseClient()
-    .from(INVENTORY_COUNTS_TABLE)
-    .update({ status: "completed" })
-    .eq("id", id);
-
-  if (error) {
-    throw new Error(error.message);
+  if (!res.ok) {
+    throw new Error(json.error ?? "棚卸の確定に失敗しました。");
   }
 }
 

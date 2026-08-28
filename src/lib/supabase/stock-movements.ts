@@ -1,5 +1,7 @@
 /**
- * Supabase stock_movements テーブル操作
+ * 入出庫履歴・在庫更新
+ *
+ * 入庫/出庫の書き込みは認証付き API Route 経由（service_role → RPC）
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -7,7 +9,8 @@ import {
   STOCK_MOVEMENTS_TABLE,
 } from "@/lib/supabase/stock-movements-schema";
 import { PRODUCTS_TABLE } from "@/lib/supabase/products-schema";
-import { fetchProductById, updateProduct } from "@/lib/supabase/client";
+import { updateProduct } from "@/lib/supabase/client";
+import type { InventoryTransaction } from "@/lib/types/inventory-transaction";
 import type { MovementType, StockMovement } from "@/lib/types/stock-movement";
 
 let supabaseInstance: SupabaseClient | null = null;
@@ -24,6 +27,60 @@ function getSupabaseClient(): SupabaseClient {
     supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
   }
   return supabaseInstance;
+}
+
+function toStockMovement(row: InventoryTransaction): StockMovement {
+  return {
+    id: row.id,
+    product_id: row.product_id,
+    movement_type: row.transaction_type,
+    quantity:
+      row.transaction_type === "in" ? row.inbound_qty : row.outbound_qty,
+    quantity_before: row.previous_stock,
+    quantity_after: row.current_stock,
+    part_number: row.part_number,
+    product_name: "",
+    shelf_number: row.shelf_code,
+    memo: row.comment,
+    performed_at: row.transaction_at,
+    created_at: row.created_at,
+  };
+}
+
+async function callInventoryTransactionApi(input: {
+  productId?: string;
+  partNumber?: string;
+  transactionType: "in" | "out";
+  quantity: number;
+  comment?: string;
+}): Promise<InventoryTransaction> {
+  const res = await fetch("/api/inventory/transactions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      productId: input.productId,
+      partNumber: input.partNumber,
+      transactionType: input.transactionType,
+      quantity: input.quantity,
+      comment: input.comment ?? "",
+    }),
+  });
+
+  const json = (await res.json()) as {
+    data?: InventoryTransaction;
+    error?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(json.error ?? "入出庫処理に失敗しました。");
+  }
+
+  if (!json.data) {
+    throw new Error("入出庫処理に失敗しました。");
+  }
+
+  return json.data;
 }
 
 export async function fetchStockMovements(): Promise<StockMovement[]> {
@@ -46,7 +103,7 @@ type PerformStockMovementInput = {
   memo?: string;
 };
 
-/** 入庫・出庫を実行（在庫数更新＋履歴記録） */
+/** 入庫・出庫を実行（API Route → RPC） */
 export async function performStockMovement(
   input: PerformStockMovementInput
 ): Promise<StockMovement> {
@@ -56,45 +113,17 @@ export async function performStockMovement(
     throw new Error("数量は1以上で入力してください。");
   }
 
-  const product = await fetchProductById(productId);
-  if (!product) {
-    throw new Error("対象の製品が見つかりません。");
-  }
+  const row = await callInventoryTransactionApi({
+    productId,
+    transactionType: movementType,
+    quantity,
+    comment: memo.trim(),
+  });
 
-  const quantityBefore = product.quantity;
-  const delta = movementType === "in" ? quantity : -quantity;
-  const quantityAfter = quantityBefore + delta;
-
-  if (quantityAfter < 0) {
-    throw new Error("出庫後の在庫数がマイナスになります。");
-  }
-
-  await updateProduct(productId, { quantity: quantityAfter });
-
-  const { data, error } = await getSupabaseClient()
-    .from(STOCK_MOVEMENTS_TABLE)
-    .insert({
-      product_id: productId,
-      movement_type: movementType,
-      quantity,
-      quantity_before: quantityBefore,
-      quantity_after: quantityAfter,
-      part_number: product.part_number,
-      product_name: product.product_name,
-      shelf_number: product.shelf_number,
-      memo: memo.trim(),
-    })
-    .select(STOCK_MOVEMENTS_SELECT)
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data as unknown as StockMovement;
+  return toStockMovement(row);
 }
 
-/** 棚卸確定時の在庫調整 */
+/** 棚卸確定時の在庫調整（第2段階では従来経路のまま） */
 export async function recordInventoryAdjustment(input: {
   productId: string;
   quantityBefore: number;
@@ -142,6 +171,25 @@ export async function performStockMovementByPartNumber(input: {
     throw new Error("品番が空です。");
   }
 
+  const row = await callInventoryTransactionApi({
+    partNumber: trimmed,
+    transactionType: input.movementType,
+    quantity: input.quantity,
+    comment: input.memo?.trim() ?? "",
+  });
+
+  return toStockMovement(row);
+}
+
+/** 品番存在確認（KEYENCE取込用・読取のみ） */
+export async function findProductIdByPartNumber(
+  partNumber: string
+): Promise<string | null> {
+  const trimmed = partNumber.trim();
+  if (!trimmed) {
+    return null;
+  }
+
   const { data, error } = await getSupabaseClient()
     .from(PRODUCTS_TABLE)
     .select("id")
@@ -152,14 +200,5 @@ export async function performStockMovementByPartNumber(input: {
     throw new Error(error.message);
   }
 
-  if (!data?.[0]) {
-    throw new Error(`品番「${trimmed}」は未登録です。`);
-  }
-
-  return performStockMovement({
-    productId: data[0].id,
-    movementType: input.movementType,
-    quantity: input.quantity,
-    memo: input.memo,
-  });
+  return data?.[0]?.id ?? null;
 }

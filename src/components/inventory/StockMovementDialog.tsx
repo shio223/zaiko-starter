@@ -35,7 +35,7 @@ export function StockMovementDialog({
       return;
     }
     if (type === "out" && quantity > product.quantity) {
-      setError("出庫数が在庫数を超えています。");
+      setError(`現在庫が不足しています（現在庫：${product.quantity}）`);
       return;
     }
 
@@ -53,7 +53,7 @@ export function StockMovementDialog({
     <div className="dialog-overlay" role="dialog" aria-modal="true">
       <AccessPanel title={`${label}処理`} className="dialog-panel">
         <p className="mb-2 text-sm">
-          <strong>{product.part_number}</strong> — {product.product_name}
+          <strong>{product.part_number}</strong> — {product.name}
         </p>
         <p className="mb-3 text-sm">
           現在庫: {formatNumber(product.quantity)} / 発注点:{" "}

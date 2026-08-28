@@ -3,7 +3,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
@@ -12,26 +12,30 @@ import {
 } from "@/components/history/HistoryPanel";
 import { AccessButton } from "@/components/ui/AccessButton";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { fetchStockMovements } from "@/lib/supabase/stock-movements";
-import { filterStockMovements } from "@/lib/utils/stock-movement";
+import {
+  fetchAllInventoryTransactions,
+  fetchInventoryTransactionsPage,
+  inventoryTransactionsPageSize,
+} from "@/lib/supabase/inventory-transactions";
 import { downloadCsv } from "@/lib/utils/csv";
 import { formatSupabaseError } from "@/lib/utils/supabase-error";
 import {
-  emptyStockMovementFilter,
-  type StockMovementFilter,
-} from "@/lib/types/stock-movement";
+  emptyInventoryTransactionFilter,
+  type InventoryTransaction,
+  type InventoryTransactionFilter,
+} from "@/lib/types/inventory-transaction";
 
 export default function HistoryPage() {
-  const [movements, setMovements] = useState<
-    import("@/lib/types/stock-movement").StockMovement[]
-  >([]);
-  const [filter, setFilter] = useState<StockMovementFilter>(
-    emptyStockMovementFilter
+  const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
+  const [filter, setFilter] = useState<InventoryTransactionFilter>(
+    emptyInventoryTransactionFilter
   );
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadMovements = useCallback(async () => {
+  const loadTransactions = useCallback(async () => {
     if (!isSupabaseConfigured()) {
       setError("Supabase（Zaiko STARTER）が未設定です。");
       setLoading(false);
@@ -41,58 +45,86 @@ export default function HistoryPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchStockMovements();
-      setMovements(data);
+      const result = await fetchInventoryTransactionsPage({
+        filter,
+        page,
+        pageSize: inventoryTransactionsPageSize,
+      });
+      setTransactions(result.rows);
+      setTotal(result.total);
     } catch (err) {
       setError(formatSupabaseError(err));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filter, page]);
 
   useEffect(() => {
-    loadMovements();
-  }, [loadMovements]);
+    loadTransactions();
+  }, [loadTransactions]);
 
-  const filtered = useMemo(
-    () => filterStockMovements(movements, filter),
-    [movements, filter]
-  );
+  const handleFilterChange = (next: InventoryTransactionFilter) => {
+    setFilter(next);
+    setPage(0);
+  };
 
-  const handleExport = () => {
-    downloadCsv("stock_movements.csv", [
-      [
-        "performed_at",
-        "movement_type",
-        "part_number",
-        "product_name",
-        "shelf_number",
-        "quantity",
-        "quantity_before",
-        "quantity_after",
-        "memo",
-      ],
-      ...filtered.map((m) => [
-        m.performed_at,
-        m.movement_type,
-        m.part_number,
-        m.product_name,
-        m.shelf_number,
-        m.quantity,
-        m.quantity_before,
-        m.quantity_after,
-        m.memo,
-      ]),
-    ]);
+  const handleClearFilter = () => {
+    setFilter(emptyInventoryTransactionFilter);
+    setPage(0);
+  };
+
+  const pageSize = inventoryTransactionsPageSize;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const displayFrom = total === 0 ? 0 : page * pageSize + 1;
+  const displayTo = Math.min((page + 1) * pageSize, total);
+
+  const handleExport = async () => {
+    try {
+      const rows = await fetchAllInventoryTransactions(filter);
+      downloadCsv("inventory_transactions.csv", [
+        [
+          "transaction_at",
+          "transaction_type",
+          "part_number",
+          "shelf_code",
+          "inbound_qty",
+          "outbound_qty",
+          "previous_stock",
+          "current_stock",
+          "staff_code",
+          "location",
+          "comment",
+        ],
+        ...rows.map((row) => [
+          row.transaction_at,
+          row.transaction_type,
+          row.part_number,
+          row.shelf_code,
+          row.inbound_qty,
+          row.outbound_qty,
+          row.previous_stock,
+          row.current_stock,
+          row.staff_code ?? "",
+          row.location,
+          row.comment,
+        ]),
+      ]);
+    } catch (err) {
+      setError(formatSupabaseError(err));
+    }
   };
 
   return (
     <AppLayout>
       <PageHeader title="入出庫履歴">
-        <AccessButton variant="orange" onClick={handleExport} disabled={filtered.length === 0}>
+        <AccessButton
+          variant="orange"
+          onClick={handleExport}
+          disabled={total === 0 || loading}
+        >
           CSV出力
         </AccessButton>
-        <AccessButton variant="orange" onClick={loadMovements} disabled={loading}>
+        <AccessButton variant="orange" onClick={loadTransactions} disabled={loading}>
           更新
         </AccessButton>
       </PageHeader>
@@ -106,18 +138,35 @@ export default function HistoryPage() {
       <div className="content-layout">
         <HistorySearchPanel
           filter={filter}
-          onChange={setFilter}
-          onClear={() => setFilter(emptyStockMovementFilter)}
+          onChange={handleFilterChange}
+          onClear={handleClearFilter}
         />
 
         <div className="content-main">
-          <div className="text-sm content-summary">
-            表示件数: {filtered.length} / {movements.length} 件
+          <div className="text-sm content-summary flex items-center gap-3">
+            <span>
+              表示: {displayFrom}-{displayTo} / {total} 件（{page + 1} / {totalPages}{" "}
+              ページ）
+            </span>
+            <AccessButton
+              variant="blue"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={loading || page === 0}
+            >
+              前へ
+            </AccessButton>
+            <AccessButton
+              variant="blue"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={loading || page + 1 >= totalPages}
+            >
+              次へ
+            </AccessButton>
           </div>
           {loading ? (
             <div className="access-panel p-4 text-center text-sm">読み込み中...</div>
           ) : (
-            <HistoryTable movements={filtered} />
+            <HistoryTable transactions={transactions} />
           )}
         </div>
       </div>

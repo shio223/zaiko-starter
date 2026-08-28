@@ -424,48 +424,77 @@ body {
   background: #e8e8e8;
 }
 
+/* Brother QL-700 62mmロール: 棚番 / 品名 / バーコード / 品番 */
 .barcode-label {
   box-sizing: border-box;
   width: 62mm;
-  min-height: 30mm;
-  border: 1px dashed #666;
-  padding: 2mm 3mm;
+  min-height: 28mm;
+  height: auto;
+  border: 0.4mm solid #000;
+  padding: 2.5mm 3mm 2mm;
   text-align: center;
   background: #fff;
+  color: #000;
   break-inside: avoid;
   page-break-inside: avoid;
 }
 
 .barcode-label-preview {
-  border-style: dashed;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
-.barcode-label-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 4px;
-  font-size: 9px;
-  line-height: 1.2;
-  margin-bottom: 2px;
-  text-align: left;
+.barcode-label-shelf {
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.15;
+  margin-bottom: 1mm;
+  word-break: break-all;
 }
 
 .barcode-label-name {
   font-size: 11px;
   font-weight: bold;
   line-height: 1.2;
-  margin-bottom: 2px;
+  margin-bottom: 1.5mm;
   word-break: break-all;
 }
 
 .barcode-label-code {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  min-height: 12mm;
+  margin-bottom: 1mm;
 }
 
 .barcode-label-code svg {
   max-width: 100%;
   height: auto;
+}
+
+.barcode-label-svg-hidden {
+  display: none;
+}
+
+.barcode-label-error {
+  font-size: 9px;
+  color: #b00000;
+  line-height: 1.2;
+  padding: 1mm;
+  border: 0.3mm solid #b00000;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.barcode-label-part {
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  word-break: break-all;
+  /* 品番は text として保持（先頭ゼロ・# 等をそのまま表示） */
+  font-variant-numeric: normal;
 }
 
 .keyence-panel {
@@ -499,7 +528,17 @@ body {
 }
 
 @media print {
+  /* QL-700 62mmロール / 倍率100% / 余白なし前提 */
+  @page {
+    size: 62mm auto;
+    margin: 0;
+  }
+
+  html,
   body {
+    width: 62mm;
+    margin: 0;
+    padding: 0;
     background: #fff;
   }
 
@@ -508,6 +547,7 @@ body {
     padding: 0;
     margin: 0;
     max-width: none;
+    width: 62mm;
   }
 
   .menu-screen,
@@ -527,12 +567,25 @@ body {
   .barcode-print-area {
     padding: 0;
     margin: 0;
+    width: 62mm;
   }
 
   .barcode-label {
-    border: none;
-    margin: 0 auto 2mm;
+    width: 62mm;
+    margin: 0;
+    box-shadow: none;
     page-break-after: always;
+    break-after: page;
+  }
+
+  .barcode-label:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  .barcode-label-error {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
 

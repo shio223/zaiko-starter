@@ -7,7 +7,17 @@ import { AccessButton } from "@/components/ui/AccessButton";
 import type { KeyenceImportRow } from "@/lib/types/keyence-import";
 
 type KeyenceManualInputDialogProps = {
-  onAdd: (row: Omit<KeyenceImportRow, "id" | "lineNumber" | "source">) => void;
+  onAdd: (
+    row: Pick<
+      KeyenceImportRow,
+      | "part_number"
+      | "product_name"
+      | "shelf_code"
+      | "movement_type"
+      | "quantity"
+      | "memo"
+    >
+  ) => void;
   onCancel: () => void;
 };
 
@@ -18,7 +28,7 @@ export function KeyenceManualInputDialog({
 }: KeyenceManualInputDialogProps) {
   const [partNumber, setPartNumber] = useState("");
   const [productName, setProductName] = useState("");
-  const [shelfNumber, setShelfNumber] = useState("");
+  const [shelfCode, setShelfCode] = useState("");
   const [movementType, setMovementType] = useState<"in" | "out">("in");
   const [quantity, setQuantity] = useState(1);
   const [memo, setMemo] = useState("");
@@ -37,7 +47,7 @@ export function KeyenceManualInputDialog({
     onAdd({
       part_number: partNumber.trim(),
       product_name: productName.trim(),
-      shelf_number: shelfNumber.trim(),
+      shelf_code: shelfCode.trim(),
       movement_type: movementType,
       quantity,
       memo: memo.trim(),
@@ -63,8 +73,8 @@ export function KeyenceManualInputDialog({
         <AccessInput
           id="manual-shelf-number"
           label="棚番"
-          value={shelfNumber}
-          onChange={(e) => setShelfNumber(e.target.value)}
+          value={shelfCode}
+          onChange={(e) => setShelfCode(e.target.value)}
         />
         <div className="mb-2">
           <label htmlFor="manual-movement-type" className="access-label">

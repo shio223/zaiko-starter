@@ -3,7 +3,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
@@ -12,23 +12,27 @@ import {
 } from "@/components/monthly-movement/MonthlyMovementPanel";
 import { AccessButton } from "@/components/ui/AccessButton";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { fetchStockMovements } from "@/lib/supabase/stock-movements";
 import {
-  aggregateMonthlyMovements,
-  filterMonthlyMovements,
-  getAvailableYearMonths,
-} from "@/lib/utils/stock-movement";
+  fetchMonthlyMovementMonths,
+  fetchMonthlyMovements,
+} from "@/lib/supabase/monthly-movements";
 import { downloadCsv } from "@/lib/utils/csv";
 import { formatSupabaseError } from "@/lib/utils/supabase-error";
-import { emptyMonthlyMovementFilter } from "@/lib/types/monthly-movement";
+import {
+  emptyMonthlyMovementFilter,
+  type MonthlyMovementFilter,
+  type MonthlyMovementRow,
+} from "@/lib/types/monthly-movement";
 
 export default function MonthlyMovementPage() {
-  const [filter, setFilter] = useState(emptyMonthlyMovementFilter);
+  const [filter, setFilter] = useState<MonthlyMovementFilter>(
+    emptyMonthlyMovementFilter
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allRows, setAllRows] = useState<
-    import("@/lib/types/monthly-movement").MonthlyMovementRow[]
-  >([]);
+  const [rows, setRows] = useState<MonthlyMovementRow[]>([]);
+  const [yearMonths, setYearMonths] = useState<string[]>([]);
+  const [totalUnfiltered, setTotalUnfiltered] = useState(0);
 
   const loadData = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -40,25 +44,34 @@ export default function MonthlyMovementPage() {
     try {
       setLoading(true);
       setError(null);
-      const movements = await fetchStockMovements();
-      setAllRows(aggregateMonthlyMovements(movements));
+
+      const hasFilter = Boolean(
+        filter.yearMonth.trim() ||
+          filter.partNumber.trim() ||
+          filter.productName.trim()
+      );
+
+      const [months, filteredRows, allRows] = await Promise.all([
+        fetchMonthlyMovementMonths(),
+        fetchMonthlyMovements(filter),
+        hasFilter
+          ? fetchMonthlyMovements(emptyMonthlyMovementFilter)
+          : Promise.resolve(null),
+      ]);
+
+      setYearMonths(months);
+      setRows(filteredRows);
+      setTotalUnfiltered(allRows?.length ?? filteredRows.length);
     } catch (err) {
       setError(formatSupabaseError(err));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filter]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const filtered = useMemo(
-    () => filterMonthlyMovements(allRows, filter),
-    [allRows, filter]
-  );
-
-  const yearMonths = useMemo(() => getAvailableYearMonths(allRows), [allRows]);
 
   const handleExport = () => {
     downloadCsv("monthly_movement.csv", [
@@ -71,7 +84,7 @@ export default function MonthlyMovementPage() {
         "out_quantity",
         "net_quantity",
       ],
-      ...filtered.map((r) => [
+      ...rows.map((r) => [
         r.yearMonth,
         r.part_number,
         r.product_name,
@@ -86,7 +99,11 @@ export default function MonthlyMovementPage() {
   return (
     <AppLayout>
       <PageHeader title="月別移動量">
-        <AccessButton variant="orange" onClick={handleExport} disabled={filtered.length === 0}>
+        <AccessButton
+          variant="orange"
+          onClick={handleExport}
+          disabled={rows.length === 0}
+        >
           CSV出力
         </AccessButton>
         <AccessButton variant="orange" onClick={loadData} disabled={loading}>
@@ -110,12 +127,12 @@ export default function MonthlyMovementPage() {
 
         <div className="content-main">
           <div className="text-sm content-summary">
-            表示件数: {filtered.length} / {allRows.length} 件
+            表示件数: {rows.length} / {totalUnfiltered} 件
           </div>
           {loading ? (
             <div className="access-panel p-4 text-center text-sm">読み込み中...</div>
           ) : (
-            <MonthlyMovementTable rows={filtered} />
+            <MonthlyMovementTable rows={rows} />
           )}
         </div>
       </div>

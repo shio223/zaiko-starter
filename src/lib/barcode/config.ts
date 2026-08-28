@@ -1,17 +1,20 @@
 /**
- * バーコード設定
- * 実機ラベル確認後は format / width / height 等を変更する
+ * Brother QL-700 62mmロール向けバーコードラベル設定
+ * 現場確認済み: Code-39 / 品番(part_number) / 可変長
  */
-export type BarcodeFormat = "CODE128" | "CODE39" | "EAN13";
+export type BarcodeFormat = "CODE39" | "CODE128" | "EAN13";
 
 export const BARCODE_LABEL_CONFIG = {
   /** Brother QL-700 62mm幅テープ */
   labelWidthMm: 62,
-  /** jsbarcode の format（既存ラベル確認後に変更可能） */
-  format: "CODE128" as BarcodeFormat,
-  width: 1.2,
-  height: 40,
-  displayValue: true,
+  /** 現場確認: 旧Accessで Code-39 選択 */
+  format: "CODE39" as BarcodeFormat,
+  /** バーコードモジュール幅 */
+  width: 1.4,
+  /** バーコード高さ（px） */
+  height: 48,
+  /** 品番はラベル下部に別表示するため、バーコード内の文字は出さない */
+  displayValue: false,
   fontSize: 12,
-  margin: 2,
+  margin: 0,
 } as const;

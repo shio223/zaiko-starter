@@ -1,6 +1,5 @@
 /**
  * 製品マスタの入力フォーム
- * 新規登録・編集の両方で使用（Access版の製品マスタ画面に相当）
  */
 "use client";
 
@@ -40,12 +39,12 @@ export function ProductForm({
     <AccessPanel title="製品情報入力" className="product-form-panel">
       <div className="product-form-grid">
         <AccessInput
-          id="shelf_number"
+          id="shelf_code"
           label="棚番"
-          value={data.shelf_number}
-          onChange={(e) => update("shelf_number", e.target.value)}
+          value={data.shelf_code}
+          onChange={(e) => update("shelf_code", e.target.value)}
           disabled={disabled}
-          error={errors.shelf_number}
+          error={errors.shelf_code}
         />
         <AccessInput
           id="supplier"
@@ -73,18 +72,18 @@ export function ProductForm({
           required
         />
         <AccessInput
-          id="product_name"
+          id="name"
           label="品名"
-          value={data.product_name}
-          onChange={(e) => update("product_name", e.target.value)}
+          value={data.name}
+          onChange={(e) => update("name", e.target.value)}
           disabled={disabled}
-          error={errors.product_name}
+          error={errors.name}
           required
           className="product-form-full"
         />
         <AccessInput
           id="quantity"
-          label="数量（在庫数）"
+          label="現在庫"
           type="number"
           min={0}
           step="any"
@@ -116,27 +115,27 @@ export function ProductForm({
           error={errors.reorder_point}
         />
         <AccessInput
-          id="last_inventory_count"
-          label="最終棚卸数"
+          id="latest_inventory_count"
+          label="最新棚卸数"
           type="number"
           min={0}
           step="any"
-          value={data.last_inventory_count}
+          value={data.latest_inventory_count}
           onChange={(e) =>
-            update("last_inventory_count", parseNumber(e.target.value))
+            update("latest_inventory_count", parseNumber(e.target.value))
           }
           disabled={disabled}
-          error={errors.last_inventory_count}
+          error={errors.latest_inventory_count}
         />
         <div className="product-form-full">
           <AccessTextarea
-            id="memo"
+            id="note"
             label="備考"
             rows={3}
-            value={data.memo}
-            onChange={(e) => update("memo", e.target.value)}
+            value={data.note}
+            onChange={(e) => update("note", e.target.value)}
             disabled={disabled}
-            error={errors.memo}
+            error={errors.note}
           />
         </div>
       </div>

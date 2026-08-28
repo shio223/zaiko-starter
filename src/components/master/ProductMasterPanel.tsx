@@ -21,6 +21,7 @@ const defaultFilter: SearchFilter = {
   productName: "",
   shelfNumber: "",
   supplier: "",
+  department: "",
   mode: "AND",
 };
 
@@ -80,7 +81,7 @@ export function ProductMasterPanel({ onNotice }: ProductMasterPanelProps) {
     }
 
     const confirmed = window.confirm(
-      `「${selected.product_name}」（品番: ${selected.part_number}）を削除しますか？`
+      `「${selected.name}」（品番: ${selected.part_number}）を削除しますか？`
     );
     if (!confirmed) return;
 
@@ -140,7 +141,7 @@ export function ProductMasterPanel({ onNotice }: ProductMasterPanelProps) {
             表示件数: {filteredProducts.length} / {products.length} 件
             {selected && (
               <span className="content-summary-selected">
-                選択中: {selected.part_number} - {selected.product_name}
+                選択中: {selected.part_number} - {selected.name}
               </span>
             )}
           </div>

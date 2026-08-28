@@ -24,8 +24,8 @@ export function BarcodePrintPreview({ items }: BarcodePrintPreviewProps) {
   return (
     <AccessPanel title="ラベルプレビュー" className="barcode-preview-panel">
       <p className="text-sm mb-2">
-        Brother QL-700（{BARCODE_LABEL_CONFIG.labelWidthMm}mm幅）/
-        バーコード: {BARCODE_LABEL_CONFIG.format} / 合計 {totalLabels} 枚
+        Brother QL-700（{BARCODE_LABEL_CONFIG.labelWidthMm}mmロール）/
+        Code-39 / 合計 {totalLabels} 枚
       </p>
       <div className="barcode-preview-scroll">
         {items.flatMap(({ product, copies }) =>
@@ -33,8 +33,8 @@ export function BarcodePrintPreview({ items }: BarcodePrintPreviewProps) {
             <BarcodeLabel
               key={`${product.id}-${index}`}
               partNumber={product.part_number}
-              productName={product.product_name}
-              shelfNumber={product.shelf_number}
+              productName={product.name}
+              shelfNumber={product.shelf_code}
               preview
             />
           ))

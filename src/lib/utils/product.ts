@@ -18,18 +18,19 @@ export function filterProducts(
 ): Product[] {
   const conditions = [
     (p: Product) => matchesField(p.part_number, filter.partNumber),
-    (p: Product) => matchesField(p.product_name, filter.productName),
-    (p: Product) => matchesField(p.shelf_number, filter.shelfNumber),
+    (p: Product) => matchesField(p.name, filter.productName),
+    (p: Product) => matchesField(p.shelf_code, filter.shelfNumber),
     (p: Product) => matchesField(p.supplier, filter.supplier),
+    (p: Product) => matchesField(p.department, filter.department),
   ];
 
-  // 入力がある検索条件だけを抽出
   const activeConditions = conditions.filter((_, index) => {
     const fields = [
       filter.partNumber,
       filter.productName,
       filter.shelfNumber,
       filter.supplier,
+      filter.department,
     ];
     return fields[index].trim() !== "";
   });
@@ -57,30 +58,30 @@ export function formatCurrency(value: number): string {
 }
 
 /** DBの製品データを編集フォーム用に変換 */
-export function productToFormData(product: Product) {
+export function productToFormData(product: Product): ProductFormData {
   return {
-    shelf_number: product.shelf_number,
+    shelf_code: product.shelf_code,
     supplier: product.supplier,
     department: product.department,
     part_number: product.part_number,
-    product_name: product.product_name,
+    name: product.name,
     quantity: product.quantity,
     unit_price: product.unit_price,
     reorder_point: product.reorder_point,
-    memo: product.memo,
-    last_inventory_count: product.last_inventory_count,
+    note: product.note,
+    latest_inventory_count: product.latest_inventory_count,
   };
 }
 
-/** 保存前に文字列項目をトリム */
+/** 保存前に文字列項目をトリム（品番・棚番は先頭ゼロを保持） */
 export function normalizeProductFormData(data: ProductFormData): ProductFormData {
   return {
     ...data,
-    shelf_number: data.shelf_number.trim(),
+    shelf_code: data.shelf_code.trim(),
     supplier: data.supplier.trim(),
     department: data.department.trim(),
     part_number: data.part_number.trim(),
-    product_name: data.product_name.trim(),
-    memo: data.memo.trim(),
+    name: data.name.trim(),
+    note: data.note.trim(),
   };
 }

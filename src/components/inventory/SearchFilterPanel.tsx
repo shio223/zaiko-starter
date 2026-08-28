@@ -1,6 +1,6 @@
 /**
  * 検索・絞り込みパネル（在庫リスト・マスタ一覧の左側）
- * 品番・品名・棚番・仕入先 + AND/OR 切り替え
+ * shelfOptions 指定時のみ棚番を先頭の選択リストにする（バーコード印刷用）
  */
 "use client";
 
@@ -13,19 +13,51 @@ type SearchFilterPanelProps = {
   filter: SearchFilter;
   onChange: (filter: SearchFilter) => void;
   onClear: () => void;
+  /** 指定時: 棚番を DISTINCT 選択リストで先頭表示（文字列のまま） */
+  shelfOptions?: string[];
+  onShelfSelect?: (shelfCode: string) => void;
 };
 
 export function SearchFilterPanel({
   filter,
   onChange,
   onClear,
+  shelfOptions,
+  onShelfSelect,
 }: SearchFilterPanelProps) {
   const update = (key: keyof SearchFilter, value: string) => {
     onChange({ ...filter, [key]: value });
   };
 
+  const useShelfSelect = Array.isArray(shelfOptions);
+
   return (
     <AccessPanel title="検索・絞り込み" className="search-filter-panel">
+      {useShelfSelect && (
+        <div className="mb-3">
+          <label htmlFor="search-shelf-select" className="access-label">
+            棚番（選択）
+          </label>
+          <select
+            id="search-shelf-select"
+            className="access-input w-full"
+            value={filter.shelfNumber}
+            onChange={(e) => {
+              const value = e.target.value;
+              onChange({ ...filter, shelfNumber: value });
+              onShelfSelect?.(value);
+            }}
+          >
+            <option value="">（棚番を選択）</option>
+            {shelfOptions.map((shelf) => (
+              <option key={shelf} value={shelf}>
+                {shelf}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <AccessInput
         id="search-part-number"
         label="品番"
@@ -40,19 +72,28 @@ export function SearchFilterPanel({
         onChange={(e) => update("productName", e.target.value)}
         placeholder="品名で検索"
       />
-      <AccessInput
-        id="search-shelf-number"
-        label="棚番"
-        value={filter.shelfNumber}
-        onChange={(e) => update("shelfNumber", e.target.value)}
-        placeholder="棚番で検索"
-      />
+      {!useShelfSelect && (
+        <AccessInput
+          id="search-shelf-number"
+          label="棚番"
+          value={filter.shelfNumber}
+          onChange={(e) => update("shelfNumber", e.target.value)}
+          placeholder="棚番で検索"
+        />
+      )}
       <AccessInput
         id="search-supplier"
         label="仕入先"
         value={filter.supplier}
         onChange={(e) => update("supplier", e.target.value)}
         placeholder="仕入先で検索"
+      />
+      <AccessInput
+        id="search-department"
+        label="部門"
+        value={filter.department}
+        onChange={(e) => update("department", e.target.value)}
+        placeholder="部門で検索"
       />
 
       <div className="mb-3">

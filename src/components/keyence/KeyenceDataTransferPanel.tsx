@@ -8,18 +8,21 @@ import { KeyenceManualInputDialog } from "@/components/keyence/KeyenceManualInpu
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { parseKeyenceFile } from "@/lib/utils/keyence-parser";
 import {
-  applyKeyenceRows,
+  applyKeyenceImport,
   createManualKeyenceRow,
+  hashKeyenceFileContent,
+  isKeyenceFileAlreadyImported,
   validateKeyenceRows,
 } from "@/lib/utils/keyence-import";
 import { downloadKeyenceResultTemplate } from "@/lib/utils/product-export";
 import { formatSupabaseError } from "@/lib/utils/supabase-error";
-import type {
-  KeyenceApplyResult,
-  KeyenceImportRow,
-  KeyenceImportStep,
-  KeyenceRowIssue,
-  KeyenceValidationResult,
+import {
+  KEYENCE_DUPLICATE_FILE_MESSAGE,
+  type KeyenceApplyResult,
+  type KeyenceImportRow,
+  type KeyenceImportStep,
+  type KeyenceRowIssue,
+  type KeyenceValidationResult,
 } from "@/lib/types/keyence-import";
 
 function getRowIssues(
@@ -29,9 +32,10 @@ function getRowIssues(
   return issues.filter((i) => i.rowId === rowId);
 }
 
-function movementLabel(type: string | null): string {
-  if (type === "in") return "入庫";
-  if (type === "out") return "出庫";
+function movementLabel(row: KeyenceImportRow): string {
+  if (row.mode === 3) return "棚卸";
+  if (row.movement_type === "in") return "入庫";
+  if (row.movement_type === "out") return "出庫";
   return "-";
 }
 
@@ -45,6 +49,8 @@ export function KeyenceDataTransferPanel() {
     "BT-600を通信ユニットにしっかりセットして、「取り込み」ボタンをクリックしてください。"
   );
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [fileContentHash, setFileContentHash] = useState<string | null>(null);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
   const [rows, setRows] = useState<KeyenceImportRow[]>([]);
   const [validation, setValidation] = useState<KeyenceValidationResult | null>(
@@ -62,6 +68,8 @@ export function KeyenceDataTransferPanel() {
       "BT-600を通信ユニットにしっかりセットして、「取り込み」ボタンをクリックしてください。"
     );
     setFileName(null);
+    setFileContent(null);
+    setFileContentHash(null);
     setParseErrors([]);
     setRows([]);
     setValidation(null);
@@ -72,16 +80,31 @@ export function KeyenceDataTransferPanel() {
     }
   }, []);
 
-  const runValidation = useCallback(async (targetRows: KeyenceImportRow[]) => {
-    const result = await validateKeyenceRows(targetRows);
-    setValidation(result);
-    setRows(result.rows);
-    setStep("preview");
-    setStatusMessage(
-      `解析完了: ${result.rows.length} 件（有効 ${result.validCount} / エラー ${result.errorCount} / 警告 ${result.warningCount}）`
-    );
-    return result;
-  }, []);
+  const runValidation = useCallback(
+    async (
+      targetRows: KeyenceImportRow[],
+      hash: string,
+      alreadyImported: boolean
+    ) => {
+      const result = await validateKeyenceRows(targetRows, {
+        fileContentHash: hash,
+        alreadyImported,
+      });
+      setValidation(result);
+      setRows(result.rows);
+      setStep("preview");
+      if (alreadyImported) {
+        setStatusMessage(KEYENCE_DUPLICATE_FILE_MESSAGE);
+        setError(KEYENCE_DUPLICATE_FILE_MESSAGE);
+      } else {
+        setStatusMessage(
+          `解析完了: ${result.rows.length} 件（有効 ${result.validCount} / 未登録 ${result.unregisteredCount} / 棚卸スキップ ${result.mode3Count} / エラー ${result.errorCount} / 警告 ${result.warningCount}）`
+        );
+      }
+      return result;
+    },
+    []
+  );
 
   const handleFileSelect = async (file: File) => {
     if (!isSupabaseConfigured()) {
@@ -96,7 +119,12 @@ export function KeyenceDataTransferPanel() {
       setStatusMessage(`ファイルを解析中: ${file.name}`);
 
       const parsed = await parseKeyenceFile(file);
+      const hash = await hashKeyenceFileContent(parsed.rawText);
+      const alreadyImported = await isKeyenceFileAlreadyImported(hash);
+
       setFileName(parsed.fileName);
+      setFileContent(parsed.rawText);
+      setFileContentHash(hash);
       setParseErrors(parsed.parseErrors);
 
       if (parsed.rows.length === 0) {
@@ -109,7 +137,7 @@ export function KeyenceDataTransferPanel() {
       }
 
       setRows(parsed.rows);
-      await runValidation(parsed.rows);
+      await runValidation(parsed.rows, hash, alreadyImported);
     } catch (err) {
       setStep("ready");
       setError(err instanceof Error ? err.message : "ファイル解析に失敗しました。");
@@ -122,21 +150,48 @@ export function KeyenceDataTransferPanel() {
   };
 
   const handleManualAdd = async (
-    input: Omit<KeyenceImportRow, "id" | "lineNumber" | "source">
+    input: Pick<
+      KeyenceImportRow,
+      | "part_number"
+      | "product_name"
+      | "shelf_code"
+      | "movement_type"
+      | "quantity"
+      | "memo"
+    >
   ) => {
     const manualRow = createManualKeyenceRow(input);
     const nextRows = [...rows, manualRow];
     setShowManual(false);
     setFileName(fileName ?? "手動入力");
-    await runValidation(nextRows);
+    const hash = fileContentHash ?? (await hashKeyenceFileContent(`manual:${Date.now()}`));
+    if (!fileContentHash) {
+      setFileContentHash(hash);
+    }
+    await runValidation(nextRows, hash, validation?.alreadyImported ?? false);
   };
 
   const handleConfirmApply = async () => {
     if (!validation) return;
 
-    if (validation.errorCount > 0) {
+    if (validation.alreadyImported) {
+      setError(KEYENCE_DUPLICATE_FILE_MESSAGE);
+      return;
+    }
+
+    if (!fileContent || !fileContentHash || !fileName) {
+      setError("取込対象のファイルがありません。先にファイルを取り込んでください。");
+      return;
+    }
+
+    if (validation.validCount === 0 && validation.mode3Count === 0) {
       const proceed = window.confirm(
-        `エラーが ${validation.errorCount} 件あります。エラー行を除いて反映しますか？`
+        "在庫反映できる行がありません。未登録の保存と監査ログのみ行います。よろしいですか？"
+      );
+      if (!proceed) return;
+    } else if (validation.unregisteredCount > 0 || validation.mode3Count > 0) {
+      const proceed = window.confirm(
+        `有効 ${validation.validCount} 件を在庫へ反映します。\n未登録 ${validation.unregisteredCount} 件 / 棚卸スキップ ${validation.mode3Count} 件は在庫変更しません。\nよろしいですか？`
       );
       if (!proceed) return;
     } else {
@@ -151,11 +206,69 @@ export function KeyenceDataTransferPanel() {
       setStatusMessage("Supabaseへ反映中...");
       setError(null);
 
-      const result = await applyKeyenceRows(rows, validation.issues);
+      const result = await applyKeyenceImport({
+        fileName,
+        fileContent,
+        fileContentHash,
+      });
+
+      if (result.rejectedDuplicate) {
+        setApplyResult(result);
+        setStep("preview");
+        setError(KEYENCE_DUPLICATE_FILE_MESSAGE);
+        setStatusMessage(KEYENCE_DUPLICATE_FILE_MESSAGE);
+        return;
+      }
+
+      // プレビュー上の手動入力行（ファイル外）は個別に入出庫APIへ
+      const errorRowIds = new Set(
+        validation.issues
+          .filter((i) => i.level === "error")
+          .map((i) => i.rowId)
+      );
+      for (const row of rows) {
+        if (row.source !== "manual") continue;
+        if (errorRowIds.has(row.id)) continue;
+        if (row.mode !== 1 && row.mode !== 2) continue;
+        if (!row.part_number || !row.movement_type || row.quantity == null) {
+          continue;
+        }
+        try {
+          const res = await fetch("/api/inventory/transactions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              partNumber: row.part_number,
+              transactionType: row.movement_type,
+              quantity: row.quantity,
+              staffCode: row.staff_code || null,
+              comment: row.memo || "KEYENCE手動入力",
+            }),
+          });
+          const json = (await res.json()) as { error?: string };
+          if (!res.ok) {
+            result.failed += 1;
+            result.errors.push(
+              `手動:${row.part_number}: ${json.error ?? "失敗"}`
+            );
+          } else {
+            result.success += 1;
+          }
+        } catch (manualErr) {
+          result.failed += 1;
+          result.errors.push(
+            `手動:${row.part_number}: ${
+              manualErr instanceof Error ? manualErr.message : "失敗"
+            }`
+          );
+        }
+      }
+
       setApplyResult(result);
       setStep("done");
       setStatusMessage(
-        `反映完了: 成功 ${result.success} 件 / 失敗 ${result.failed} 件`
+        `反映完了: 成功 ${result.success} / 未登録 ${result.unregistered} / 棚卸スキップ ${result.mode3Skipped} / エラー ${result.failed}`
       );
     } catch (err) {
       setError(formatSupabaseError(err));
@@ -165,6 +278,10 @@ export function KeyenceDataTransferPanel() {
   };
 
   const issues = validation?.issues ?? [];
+  const confirmDisabled =
+    !validation ||
+    validation.alreadyImported ||
+    (!fileContent && validation.validCount === 0);
 
   return (
     <>
@@ -249,7 +366,7 @@ export function KeyenceDataTransferPanel() {
             <AccessButton
               variant="green"
               onClick={handleConfirmApply}
-              disabled={validation.validCount === 0}
+              disabled={confirmDisabled}
             >
               確定して反映
             </AccessButton>
@@ -275,7 +392,9 @@ export function KeyenceDataTransferPanel() {
                 {rows.map((row) => {
                   const rowIssues = getRowIssues(row.id, issues);
                   const hasError = rowIssues.some((i) => i.level === "error");
-                  const hasWarning = rowIssues.some((i) => i.level === "warning");
+                  const hasWarning = rowIssues.some(
+                    (i) => i.level === "warning" || i.level === "info"
+                  );
 
                   return (
                     <tr
@@ -291,10 +410,14 @@ export function KeyenceDataTransferPanel() {
                       <td>{row.lineNumber || "手動"}</td>
                       <td>{row.part_number}</td>
                       <td>{row.product_name}</td>
-                      <td>{row.shelf_number}</td>
-                      <td>{movementLabel(row.movement_type)}</td>
+                      <td>{row.shelf_code}</td>
+                      <td>{movementLabel(row)}</td>
                       <td className="text-right">{row.quantity ?? "-"}</td>
-                      <td>{row.memo}</td>
+                      <td>
+                        {row.staff_code
+                          ? `担当:${row.staff_code}`
+                          : row.memo}
+                      </td>
                       <td className="text-xs">
                         {rowIssues.length === 0
                           ? "OK"
@@ -311,7 +434,9 @@ export function KeyenceDataTransferPanel() {
         {applyResult && (
           <AccessPanel title="取り込み結果" className="mt-3">
             <p className="text-sm">
-              成功: {applyResult.success} 件 / 失敗: {applyResult.failed} 件
+              成功: {applyResult.success} 件 / 未登録: {applyResult.unregistered}{" "}
+              件 / 棚卸スキップ: {applyResult.mode3Skipped} 件 / エラー:{" "}
+              {applyResult.failed} 件
             </p>
             {applyResult.errors.length > 0 && (
               <ul className="mt-2 text-sm text-red-700 max-h-40 overflow-y-auto">
@@ -324,8 +449,7 @@ export function KeyenceDataTransferPanel() {
         )}
 
         <p className="text-xs mt-3 text-gray-700">
-          ※ BT-600の実ファイル形式は未確定のため、CSV/TXTの仮パーサーで動作します。
-          実機確認後にパーサーを差し替えます。
+          ※ INOUT_LOG（mode1入庫 / mode2出庫）を取り込みます。mode3（棚卸）は対象外です。
         </p>
       </AccessPanel>
 

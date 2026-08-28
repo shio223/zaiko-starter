@@ -1,6 +1,16 @@
-import { getCsvColumnIndex, parseCsv } from "@/lib/utils/csv";
+/**
+ * KEYENCE BT-600 実ログパーサー
+ *
+ * 形式: 日付,時刻,端末ID,モード,担当者,棚番,品番,数量,,
+ * 列0=日付 列1=時刻 列2=端末ID 列3=モード 列4=担当者
+ * 列5=棚番 列6=品番 列7=数量
+ *
+ * 品番は TEXT のまま（先頭ゼロを消さない）
+ * 日付+時刻は Asia/Tokyo として扱う
+ */
 import type {
   KeyenceImportRow,
+  KeyenceLogMode,
   KeyenceMovementType,
   KeyenceParseResult,
 } from "@/lib/types/keyence-import";
@@ -12,169 +22,155 @@ function detectFileType(fileName: string): "csv" | "txt" | "unknown" {
   return "unknown";
 }
 
-function parseMovementType(raw: string): KeyenceMovementType | null {
-  const value = raw.trim().toLowerCase();
-  if (value === "in" || value === "入庫" || value === "入" || value === "1") {
-    return "in";
-  }
-  if (value === "out" || value === "出庫" || value === "出" || value === "2") {
-    return "out";
-  }
-  return null;
-}
+function detectLogKind(
+  fileName: string,
+  modes: Array<KeyenceLogMode | null>
+): KeyenceParseResult["logKind"] {
+  const upper = fileName.toUpperCase();
+  if (upper.includes("INVENTORY_LOG")) return "inventory";
+  if (upper.includes("INOUT_LOG")) return "inout";
 
-function parseQuantity(raw: string): number | null {
-  const num = Number(raw.trim());
-  return Number.isFinite(num) && num > 0 ? num : null;
+  const set = new Set(modes.filter((m): m is KeyenceLogMode => m != null));
+  if (set.size === 0) return "unknown";
+  if (set.size > 1) return "mixed";
+  if (set.has(3) && set.size === 1) return "inventory";
+  return "inout";
 }
 
 function createRowId(lineNumber: number): string {
   return `line-${lineNumber}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** CSV形式の解析（仮実装・実機形式確定後に拡張） */
-function parseCsvContent(text: string, fileName: string): KeyenceParseResult {
-  const rows = parseCsv(text);
-  const parseErrors: string[] = [];
+/** 品番: trim のみ。数値化しない（先頭ゼロ保持） */
+export function normalizePartNumber(raw: string): string {
+  return raw.trim();
+}
 
-  if (rows.length === 0) {
-    return {
-      fileName,
-      fileType: "csv",
-      rows: [],
-      parseErrors: ["ファイルにデータがありません。"],
-    };
-  }
+function parseMode(raw: string): KeyenceLogMode | null {
+  const value = raw.trim();
+  if (value === "1") return 1;
+  if (value === "2") return 2;
+  if (value === "3") return 3;
+  return null;
+}
 
-  const headers = rows[0];
-  const partIndex = getCsvColumnIndex(headers, [
-    "part_number",
-    "品番",
-    "barcode",
-    "コード",
-  ]);
-  const nameIndex = getCsvColumnIndex(headers, ["product_name", "品名"]);
-  const shelfIndex = getCsvColumnIndex(headers, ["shelf_number", "棚番"]);
-  const typeIndex = getCsvColumnIndex(headers, [
-    "movement_type",
-    "区分",
-    "type",
-    "入出庫",
-  ]);
-  const qtyIndex = getCsvColumnIndex(headers, ["quantity", "数量", "qty"]);
-  const memoIndex = getCsvColumnIndex(headers, ["memo", "備考"]);
+function modeToMovement(mode: KeyenceLogMode | null): KeyenceMovementType | null {
+  if (mode === 1) return "in";
+  if (mode === 2) return "out";
+  return null;
+}
 
-  const hasHeader =
-    partIndex >= 0 || typeIndex >= 0 || qtyIndex >= 0 || nameIndex >= 0;
-  const dataRows = hasHeader ? rows.slice(1) : rows;
-  const startLine = hasHeader ? 2 : 1;
+function parseQuantity(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const num = Number(trimmed);
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
 
-  if (partIndex < 0 && !hasHeader) {
-    parseErrors.push(
-      "ヘッダー行が見つかりません。CSV列名（part_number, movement_type, quantity）を確認してください。"
-    );
-  }
+/**
+ * 日付 + 時刻 → Asia/Tokyo の ISO 文字列
+ * 例: 2013/12/22 + 11:45:02 → 2013-12-22T11:45:02+09:00
+ */
+export function parseTokyoDateTime(
+  dateRaw: string,
+  timeRaw: string
+): string | null {
+  const date = dateRaw.trim().replace(/\//g, "-");
+  const time = timeRaw.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  if (!/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) return null;
 
-  const parsed: KeyenceImportRow[] = dataRows.map((row, index) => {
-    const lineNumber = startLine + index;
+  const [hh, mm, ss = "00"] = time.split(":");
+  const h = hh.padStart(2, "0");
+  const m = mm.padStart(2, "0");
+  const s = ss.padStart(2, "0");
+  const iso = `${date}T${h}:${m}:${s}+09:00`;
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return null;
+  return iso;
+}
 
-    if (!hasHeader) {
-      return {
-        id: createRowId(lineNumber),
-        lineNumber,
-        part_number: row[0]?.trim() ?? "",
-        product_name: row[1]?.trim() ?? "",
-        shelf_number: row[2]?.trim() ?? "",
-        movement_type: parseMovementType(row[3] ?? ""),
-        quantity: parseQuantity(row[4] ?? ""),
-        memo: row[5]?.trim() ?? "",
-        source: "file",
-      };
-    }
+function splitLogLine(line: string): string[] {
+  const delimiter = line.includes("\t") && !line.includes(",") ? "\t" : ",";
+  return line.split(delimiter).map((c) => c.trim());
+}
 
-    return {
-      id: createRowId(lineNumber),
-      lineNumber,
-      part_number: partIndex >= 0 ? (row[partIndex]?.trim() ?? "") : "",
-      product_name: nameIndex >= 0 ? (row[nameIndex]?.trim() ?? "") : "",
-      shelf_number: shelfIndex >= 0 ? (row[shelfIndex]?.trim() ?? "") : "",
-      movement_type:
-        typeIndex >= 0 ? parseMovementType(row[typeIndex] ?? "") : null,
-      quantity: qtyIndex >= 0 ? parseQuantity(row[qtyIndex] ?? "") : null,
-      memo: memoIndex >= 0 ? (row[memoIndex]?.trim() ?? "") : "",
-      source: "file",
-    };
-  });
-
+function parseFixedColumnRow(
+  cols: string[],
+  lineNumber: number,
+  source: "file" | "manual"
+): KeyenceImportRow {
+  const mode = parseMode(cols[3] ?? "");
   return {
-    fileName,
-    fileType: "csv",
-    rows: parsed.filter(
-      (r) =>
-        r.part_number ||
-        r.product_name ||
-        r.movement_type ||
-        r.quantity !== null
-    ),
-    parseErrors,
+    id: createRowId(lineNumber),
+    lineNumber,
+    scanned_at: parseTokyoDateTime(cols[0] ?? "", cols[1] ?? ""),
+    device_id: (cols[2] ?? "").trim(),
+    mode,
+    staff_code: (cols[4] ?? "").trim(),
+    shelf_code: (cols[5] ?? "").trim(),
+    part_number: normalizePartNumber(cols[6] ?? ""),
+    product_name: "",
+    movement_type: modeToMovement(mode),
+    quantity: parseQuantity(cols[7] ?? ""),
+    memo: "",
+    source,
   };
 }
 
-/** TXT形式の解析（タブ or カンマ区切り・仮実装） */
-function parseTxtContent(text: string, fileName: string): KeyenceParseResult {
+/** 実ログ形式（INOUT_LOG / INVENTORY_LOG）の本文解析 */
+export function parseKeyenceLogText(
+  text: string,
+  fileName: string
+): KeyenceParseResult {
+  const fileType = detectFileType(fileName);
   const lines = text
+    .replace(/^\uFEFF/, "")
     .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+    .map((l) => l.trimEnd())
+    .filter((l) => l.trim().length > 0);
 
   const parseErrors: string[] = [];
   if (lines.length === 0) {
     return {
       fileName,
-      fileType: "txt",
+      fileType,
+      logKind: "unknown",
       rows: [],
       parseErrors: ["ファイルにデータがありません。"],
+      rawText: text,
     };
   }
 
-  const parsed: KeyenceImportRow[] = lines.map((line, index) => {
-    const lineNumber = index + 1;
-    const delimiter = line.includes("\t") ? "\t" : ",";
-    const cols = line.split(delimiter).map((c) => c.trim());
-
-    return {
-      id: createRowId(lineNumber),
-      lineNumber,
-      part_number: cols[0] ?? "",
-      product_name: cols[1] ?? "",
-      shelf_number: cols[2] ?? "",
-      movement_type: parseMovementType(cols[3] ?? ""),
-      quantity: parseQuantity(cols[4] ?? ""),
-      memo: cols[5] ?? "",
-      source: "file",
-    };
+  const rows: KeyenceImportRow[] = lines.map((line, index) => {
+    const cols = splitLogLine(line);
+    return parseFixedColumnRow(cols, index + 1, "file");
   });
 
-  parseErrors.push(
-    "TXT形式は仮対応です。BT-600の実際の出力形式確認後にパーサーを調整します。"
+  const logKind = detectLogKind(
+    fileName,
+    rows.map((r) => r.mode)
   );
+
+  const invalidMode = rows.filter((r) => r.mode == null).length;
+  if (invalidMode > 0) {
+    parseErrors.push(
+      `モードが不正な行が ${invalidMode} 件あります（1=入庫 / 2=出庫 / 3=棚卸）。`
+    );
+  }
 
   return {
     fileName,
-    fileType: "txt",
-    rows: parsed,
+    fileType,
+    logKind,
+    rows,
     parseErrors,
+    rawText: text,
   };
 }
 
-/** ファイル内容を解析（CSV / TXT 対応） */
+/** ファイル内容を解析 */
 export async function parseKeyenceFile(file: File): Promise<KeyenceParseResult> {
   const text = await file.text();
-  const fileType = detectFileType(file.name);
-
-  if (fileType === "txt") {
-    return parseTxtContent(text, file.name);
-  }
-
-  return parseCsvContent(text, file.name);
+  return parseKeyenceLogText(text, file.name);
 }

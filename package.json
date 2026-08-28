@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "export:mdb": "python3 scripts/export_mdb_products.py",
+    "import:products:dry-run": "node scripts/import_products_to_supabase.mjs",
+    "import:products": "node scripts/import_products_to_supabase.mjs --execute"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

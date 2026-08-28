@@ -1,6 +1,7 @@
 "use client";
 
 import type { Product } from "@/lib/types/product";
+import { isBelowReorderPoint } from "@/lib/types/product";
 import { AccessPanel } from "@/components/ui/AccessPanel";
 import { formatCurrency, formatNumber } from "@/lib/utils/product";
 
@@ -18,8 +19,7 @@ export function SelectedProductPanel({ product }: SelectedProductPanelProps) {
     );
   }
 
-  const isLowStock =
-    product.reorder_point > 0 && product.quantity <= product.reorder_point;
+  const isLowStock = isBelowReorderPoint(product);
 
   return (
     <AccessPanel title="選択中の製品" className="search-filter-panel">
@@ -27,10 +27,10 @@ export function SelectedProductPanel({ product }: SelectedProductPanelProps) {
         <dt>品番</dt>
         <dd>{product.part_number}</dd>
         <dt>品名</dt>
-        <dd>{product.product_name}</dd>
+        <dd>{product.name}</dd>
         <dt>棚番</dt>
-        <dd>{product.shelf_number}</dd>
-        <dt>在庫数</dt>
+        <dd>{product.shelf_code}</dd>
+        <dt>現在庫</dt>
         <dd className={isLowStock ? "text-red-700 font-bold" : ""}>
           {formatNumber(product.quantity)}
           {isLowStock && "（発注点以下）"}

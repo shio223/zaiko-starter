@@ -16,16 +16,16 @@ function parseNumber(value: string, fallback = 0): number {
 
 function rowToFormData(row: string[], headers: string[]): ProductFormData | null {
   const partIndex = getCsvColumnIndex(headers, ["part_number", "品番"]);
-  const nameIndex = getCsvColumnIndex(headers, ["product_name", "品名"]);
+  const nameIndex = getCsvColumnIndex(headers, ["name", "product_name", "品名"]);
 
   if (partIndex < 0 || nameIndex < 0) {
     return null;
   }
 
   const partNumber = row[partIndex]?.trim() ?? "";
-  const productName = row[nameIndex]?.trim() ?? "";
+  const name = row[nameIndex]?.trim() ?? "";
 
-  if (!partNumber || !productName) {
+  if (!partNumber || !name) {
     return null;
   }
 
@@ -35,17 +35,17 @@ function rowToFormData(row: string[], headers: string[]): ProductFormData | null
   };
 
   return {
-    shelf_number: get(["shelf_number", "棚番"]),
+    shelf_code: get(["shelf_code", "shelf_number", "棚番"]),
     supplier: get(["supplier", "仕入先"]),
     department: get(["department", "部門"]),
     part_number: partNumber,
-    product_name: productName,
-    quantity: parseNumber(get(["quantity", "在庫数", "数量"])),
+    name,
+    quantity: parseNumber(get(["quantity", "在庫数", "数量", "現在庫"])),
     unit_price: parseNumber(get(["unit_price", "単価"])),
     reorder_point: parseNumber(get(["reorder_point", "発注点"])),
-    memo: get(["memo", "備考"]),
-    last_inventory_count: parseNumber(
-      get(["last_inventory_count", "最終棚卸数"])
+    note: get(["note", "memo", "備考"]),
+    latest_inventory_count: parseNumber(
+      get(["latest_inventory_count", "last_inventory_count", "最終棚卸数"])
     ),
   };
 }
@@ -99,20 +99,19 @@ export async function importProductsFromCsv(text: string): Promise<ImportResult>
   return result;
 }
 
-/** 空のインポートテンプレート行 */
 export function getProductImportTemplateRows(): string[][] {
   return [
     [
-      "shelf_number",
+      "shelf_code",
       "supplier",
       "department",
       "part_number",
-      "product_name",
+      "name",
       "quantity",
       "unit_price",
       "reorder_point",
-      "memo",
-      "last_inventory_count",
+      "note",
+      "latest_inventory_count",
     ],
     [
       "A-01",

@@ -2,16 +2,17 @@ import type { Product } from "@/lib/types/product";
 import { downloadCsv } from "@/lib/utils/csv";
 
 const PRODUCT_EXPORT_HEADERS = [
-  "shelf_number",
+  "shelf_code",
   "supplier",
   "department",
   "part_number",
-  "product_name",
+  "name",
   "quantity",
   "unit_price",
   "reorder_point",
-  "memo",
-  "last_inventory_count",
+  "note",
+  "latest_inventory_count",
+  "print_count",
 ];
 
 /** 在庫リストを CSV 出力 */
@@ -19,16 +20,17 @@ export function exportProductsToCsv(products: Product[], filename?: string): voi
   const rows = [
     PRODUCT_EXPORT_HEADERS,
     ...products.map((p) => [
-      p.shelf_number,
+      p.shelf_code,
       p.supplier,
       p.department,
       p.part_number,
-      p.product_name,
+      p.name,
       p.quantity,
       p.unit_price,
       p.reorder_point,
-      p.memo,
-      p.last_inventory_count,
+      p.note,
+      p.latest_inventory_count,
+      p.print_count,
     ]),
   ];
 
@@ -39,11 +41,11 @@ export function exportProductsToCsv(products: Product[], filename?: string): voi
 /** KEYENCE ハンディ向けマスタ出力 */
 export function exportKeyenceMasterCsv(products: Product[]): void {
   const rows = [
-    ["part_number", "product_name", "shelf_number", "quantity"],
+    ["part_number", "name", "shelf_code", "quantity"],
     ...products.map((p) => [
       p.part_number,
-      p.product_name,
-      p.shelf_number,
+      p.name,
+      p.shelf_code,
       p.quantity,
     ]),
   ];
@@ -51,11 +53,11 @@ export function exportKeyenceMasterCsv(products: Product[]): void {
   downloadCsv(`keyence_master_${date}.csv`, rows);
 }
 
-/** KEYENCE スキャン結果テンプレート */
+/** KEYENCE 実ログ形式のサンプル（仮テンプレート） */
 export function downloadKeyenceResultTemplate(): void {
-  downloadCsv("keyence_result_template.csv", [
-    ["part_number", "movement_type", "quantity", "memo"],
-    ["PN-001", "in", 10, "入庫例"],
-    ["PN-002", "out", 5, "出庫例"],
+  downloadCsv("keyence_inout_log_sample.txt", [
+    ["2013/12/22", "11:45:02", "00001", "1", "01", "2624", "00980682", "10", "", ""],
+    ["2026/05/22", "10:43:46", "00001", "2", "20", "", "1000106735", "1", "", ""],
+    ["2013/12/22", "11:46:06", "00001", "3", "", "2624", "00980682", "10", "", ""],
   ]);
 }

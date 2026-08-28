@@ -1,2 +1,2 @@
-shelf_number,supplier,department,part_number,product_name,quantity,unit_price,reorder_point,memo,last_inventory_count
-A-01,キーエンス,製造部,PN-001,センサーケーブル 2m,50,1200,10,常用部品,50
+shelf_code,supplier,department,part_number,name,quantity,unit_price,reorder_point,note,latest_inventory_count,print_count
+0110,802,Ｈ,1-055-4B,KST554W 1年整備部品,0,102847,0,KST554W　3000HR部品,0,1
