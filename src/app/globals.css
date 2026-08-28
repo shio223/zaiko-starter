@@ -538,8 +538,9 @@ body {
 }
 
 @media print {
-  /* QL-700 62mm連続ロール / 倍率100% / 余白なし */
+  /* QL-700 62mm無定長ロール: 幅62mm × 送り長29mm（内容直後でカット） / 余白なし */
   @page {
+    size: 62mm 29mm;
     margin: 0;
   }
 
@@ -591,6 +592,8 @@ body {
   .barcode-label {
     width: 58mm !important;
     max-width: 58mm !important;
+    height: auto !important;
+    max-height: 28mm !important;
     margin-left: auto !important;
     margin-right: auto !important;
     margin-top: 0 !important;
