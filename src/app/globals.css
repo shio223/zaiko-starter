@@ -428,10 +428,9 @@ body {
 .barcode-label {
   box-sizing: border-box;
   width: 62mm;
-  min-height: 28mm;
   height: auto;
   border: 0.4mm solid #000;
-  padding: 2.5mm 3mm 2mm;
+  padding: 1.5mm 2.5mm 1.5mm;
   text-align: center;
   background: #fff;
   color: #000;
@@ -444,19 +443,23 @@ body {
 }
 
 .barcode-label-shelf {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   line-height: 1.15;
-  margin-bottom: 1mm;
+  margin-bottom: 0.5mm;
   word-break: break-all;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .barcode-label-name {
   font-size: 11px;
   font-weight: bold;
   line-height: 1.2;
-  margin-bottom: 1.5mm;
+  margin-bottom: 0.8mm;
   word-break: break-all;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .barcode-label-code {
@@ -464,13 +467,15 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 12mm;
-  margin-bottom: 1mm;
+  margin-bottom: 0.5mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .barcode-label-code svg {
   max-width: 100%;
   height: auto;
+  display: block;
 }
 
 .barcode-label-svg-hidden {
@@ -495,6 +500,8 @@ body {
   word-break: break-all;
   /* 品番は text として保持（先頭ゼロ・# 等をそのまま表示） */
   font-variant-numeric: normal;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .keyence-panel {
@@ -528,26 +535,31 @@ body {
 }
 
 @media print {
-  /* QL-700 62mmロール / 倍率100% / 余白なし前提 */
+  /* QL-700 62mm連続ロール / 倍率100% / 余白なし */
   @page {
-    size: 62mm auto;
     margin: 0;
   }
 
   html,
   body {
-    width: 62mm;
-    margin: 0;
-    padding: 0;
-    background: #fff;
+    width: 62mm !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .app-layout,
   .app-layout-inner {
-    padding: 0;
-    margin: 0;
-    max-width: none;
-    width: 62mm;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: 62mm !important;
   }
 
   .menu-screen,
@@ -565,15 +577,18 @@ body {
   }
 
   .barcode-print-area {
-    padding: 0;
-    margin: 0;
-    width: 62mm;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 62mm !important;
   }
 
   .barcode-label {
-    width: 62mm;
-    margin: 0;
-    box-shadow: none;
+    width: 62mm !important;
+    max-width: 62mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
     page-break-after: always;
     break-after: page;
   }
