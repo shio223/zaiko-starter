@@ -8,7 +8,7 @@ export const BARCODE_LABEL_CONFIG = {
   /** Brother QL-700 62mm幅ロール */
   rollWidthMm: 62,
   /** 印刷有効幅（余白・印刷可能領域考慮） */
-  labelWidthMm: 58,
+  labelWidthMm: 60,
   /** 現場確認: 旧Accessで Code-39 選択 */
   format: "CODE39" as BarcodeFormat,
   /** バーコードモジュール幅（視認性・読取性向上） */

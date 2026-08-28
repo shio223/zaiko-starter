@@ -424,14 +424,14 @@ body {
   background: #e8e8e8;
 }
 
-/* Brother QL-700 62mmロール（有効印刷幅58mm）: 棚番 / 品名 / バーコード / 品番 */
+/* Brother QL-700 62mmロール（有効印刷幅60mm）: 棚番 / 品名 / バーコード / 品番 */
 .barcode-label {
   box-sizing: border-box;
-  width: 58mm;
-  max-width: 58mm;
+  width: 60mm;
+  max-width: 60mm;
   height: auto;
   border: 0.4mm solid #000;
-  padding: 1.5mm 2.5mm 1.5mm;
+  padding: 2.2mm 2.5mm 1.8mm;
   text-align: center;
   background: #fff;
   color: #000;
@@ -476,7 +476,7 @@ body {
 
 .barcode-label-code svg {
   width: 100%;
-  max-width: 53mm;
+  max-width: 55mm;
   height: auto;
   display: block;
 }
@@ -538,9 +538,9 @@ body {
 }
 
 @media print {
-  /* QL-700 62mm無定長ロール: 幅62mm × 送り長29mm（内容直後でカット） / 余白なし */
+  /* QL-700 62mm無定長ロール: 幅62mm × 送り長33mm（上下安全余白確保・内容直後でカット） / 余白なし */
   @page {
-    size: 62mm 29mm;
+    size: 62mm 33mm;
     margin: 0;
   }
 
@@ -590,13 +590,13 @@ body {
   }
 
   .barcode-label {
-    width: 58mm !important;
-    max-width: 58mm !important;
+    width: 60mm !important;
+    max-width: 60mm !important;
     height: auto !important;
-    max-height: 28mm !important;
+    max-height: 32mm !important;
     margin-left: auto !important;
     margin-right: auto !important;
-    margin-top: 0 !important;
+    margin-top: 0.5mm !important;
     margin-bottom: 0 !important;
     box-shadow: none !important;
     break-inside: avoid !important;
