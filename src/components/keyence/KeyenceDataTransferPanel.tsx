@@ -5,8 +5,12 @@ import { useRouter } from "next/navigation";
 import { AccessPanel } from "@/components/ui/AccessPanel";
 import { AccessButton } from "@/components/ui/AccessButton";
 import { KeyenceManualInputDialog } from "@/components/keyence/KeyenceManualInputDialog";
+import {
+  KeyenceBridgeError,
+  receiveFromKeyenceBridge,
+} from "@/lib/keyence/bridge-client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { parseKeyenceFile } from "@/lib/utils/keyence-parser";
+import { parseKeyenceLogText } from "@/lib/utils/keyence-parser";
 import {
   applyKeyenceImport,
   createManualKeyenceRow,
@@ -32,6 +36,9 @@ function getRowIssues(
   return issues.filter((i) => i.rowId === rowId);
 }
 
+const READY_MESSAGE =
+  "BT-600を通信ユニットにしっかりセットして、「BT-600から受信」ボタンをクリックしてください。";
+
 function movementLabel(row: KeyenceImportRow): string {
   if (row.mode === 3) return "棚卸";
   if (row.movement_type === "in") return "入庫";
@@ -45,9 +52,8 @@ export function KeyenceDataTransferPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<KeyenceImportStep>("ready");
-  const [statusMessage, setStatusMessage] = useState(
-    "BT-600を通信ユニットにしっかりセットして、「取り込み」ボタンをクリックしてください。"
-  );
+  const [statusMessage, setStatusMessage] = useState(READY_MESSAGE);
+  const [receiving, setReceiving] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileContentHash, setFileContentHash] = useState<string | null>(null);
@@ -64,9 +70,7 @@ export function KeyenceDataTransferPanel() {
 
   const resetState = useCallback(() => {
     setStep("ready");
-    setStatusMessage(
-      "BT-600を通信ユニットにしっかりセットして、「取り込み」ボタンをクリックしてください。"
-    );
+    setStatusMessage(READY_MESSAGE);
     setFileName(null);
     setFileContent(null);
     setFileContentHash(null);
@@ -106,6 +110,65 @@ export function KeyenceDataTransferPanel() {
     []
   );
 
+  /**
+   * ログ文字列 → 解析 → ハッシュ → 取込済み確認 → 検証 → プレビュー。
+   * ファイル選択・BT-600 受信の共通処理。ここでは在庫・DB を更新しない。
+   */
+  const analyzeLogText = async (text: string, sourceFileName: string) => {
+    const parsed = parseKeyenceLogText(text, sourceFileName);
+    const hash = await hashKeyenceFileContent(parsed.rawText);
+    const alreadyImported = await isKeyenceFileAlreadyImported(hash);
+
+    setFileName(parsed.fileName);
+    setFileContent(parsed.rawText);
+    setFileContentHash(hash);
+    setParseErrors(parsed.parseErrors);
+
+    if (parsed.rows.length === 0) {
+      setStep("ready");
+      setStatusMessage("取り込めるデータがありません。");
+      setError(
+        parsed.parseErrors.join(" ") || "ファイルに有効なデータがありません。"
+      );
+      return;
+    }
+
+    setRows(parsed.rows);
+    await runValidation(parsed.rows, hash, alreadyImported);
+  };
+
+  const handleBridgeReceive = async () => {
+    if (receiving) {
+      return;
+    }
+    if (!isSupabaseConfigured()) {
+      setError("Supabase（Zaiko STARTER）が未設定です。");
+      return;
+    }
+
+    setReceiving(true);
+    resetState();
+    setStatusMessage("BT-600から受信中…（BT-600を通信ユニットにセットしたままお待ちください）");
+
+    try {
+      const received = await receiveFromKeyenceBridge();
+      setStep("parsing");
+      setStatusMessage(`受信したデータを解析中: ${received.fileName}`);
+      await analyzeLogText(received.content, received.fileName);
+    } catch (err) {
+      setStep("ready");
+      if (err instanceof KeyenceBridgeError) {
+        setError(err.message);
+        setStatusMessage(READY_MESSAGE);
+      } else {
+        setError(err instanceof Error ? err.message : "受信したデータの解析に失敗しました。");
+        setStatusMessage("取り込みに失敗しました。");
+      }
+    } finally {
+      setReceiving(false);
+    }
+  };
+
   const handleFileSelect = async (file: File) => {
     if (!isSupabaseConfigured()) {
       setError("Supabase（Zaiko STARTER）が未設定です。");
@@ -118,26 +181,8 @@ export function KeyenceDataTransferPanel() {
       setApplyResult(null);
       setStatusMessage(`ファイルを解析中: ${file.name}`);
 
-      const parsed = await parseKeyenceFile(file);
-      const hash = await hashKeyenceFileContent(parsed.rawText);
-      const alreadyImported = await isKeyenceFileAlreadyImported(hash);
-
-      setFileName(parsed.fileName);
-      setFileContent(parsed.rawText);
-      setFileContentHash(hash);
-      setParseErrors(parsed.parseErrors);
-
-      if (parsed.rows.length === 0) {
-        setStep("ready");
-        setStatusMessage("取り込めるデータがありません。");
-        setError(
-          parsed.parseErrors.join(" ") || "ファイルに有効なデータがありません。"
-        );
-        return;
-      }
-
-      setRows(parsed.rows);
-      await runValidation(parsed.rows, hash, alreadyImported);
+      const text = await file.text();
+      await analyzeLogText(text, file.name);
     } catch (err) {
       setStep("ready");
       setError(err instanceof Error ? err.message : "ファイル解析に失敗しました。");
@@ -277,6 +322,7 @@ export function KeyenceDataTransferPanel() {
     }
   };
 
+  const busy = receiving || step === "parsing" || step === "applying";
   const issues = validation?.issues ?? [];
   const confirmDisabled =
     !validation ||
@@ -287,22 +333,30 @@ export function KeyenceDataTransferPanel() {
     <>
       <AccessPanel title="KEYENCE BT-600 データ転送" className="keyence-panel">
         <p className="keyence-guide text-sm mb-3">
-          BT-600を通信ユニットにしっかりセットして、「取り込み」ボタンをクリックしてください。
+          BT-600を通信ユニットにしっかりセットして、「BT-600から受信」ボタンをクリックしてください。
         </p>
         <p className="text-sm mb-3 keyence-status">{statusMessage}</p>
 
-        <div className="page-header-actions mb-3">
+        <div className="page-header-actions mb-1">
           <AccessButton
             variant="green"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={step === "parsing" || step === "applying"}
+            onClick={handleBridgeReceive}
+            disabled={busy}
+            aria-busy={receiving}
           >
-            取り込み
+            {receiving ? "BT-600から受信中…" : "BT-600から受信"}
+          </AccessButton>
+          <AccessButton
+            variant="blue"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={busy}
+          >
+            ファイルから取り込み
           </AccessButton>
           <AccessButton
             variant="blue"
             onClick={() => setShowManual(true)}
-            disabled={step === "parsing" || step === "applying"}
+            disabled={busy}
           >
             手動入力
           </AccessButton>
@@ -313,11 +367,17 @@ export function KeyenceDataTransferPanel() {
             仮テンプレート
           </AccessButton>
           {(step === "preview" || step === "done") && (
-            <AccessButton variant="orange" onClick={resetState}>
+            <AccessButton variant="orange" onClick={resetState} disabled={busy}>
               リセット
             </AccessButton>
           )}
         </div>
+        <p className="text-xs mb-3 text-gray-700">
+          ※ 受信しただけでは在庫は変わりません。内容を確認して「確定して反映」を押したときに反映されます。
+          <br />
+          ※ うまく受信できない場合は「ファイルから取り込み」で、
+          {"C:\\BT_WEB_RECV\\RECEIVED"} に保存されたファイルを選んで取り込めます。
+        </p>
 
         <input
           ref={fileInputRef}
